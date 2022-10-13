@@ -18,6 +18,7 @@ module.exports.list = async (userId, userName) => {
             toDoList.unshift(userName + ", ты успел натворить:");
             resolve(toDoList.join('\n'));
         }catch (err) {
+            console.log("affairs list error", err);
             reject(new Error('Не могу показать твой лист, дружочек =('));
         }
     });
@@ -149,7 +150,7 @@ module.exports.garbageCollector = async (userId) => {
 async function botDecorator(userId, affairs){
     try{
         const user = await modelUser.get(userId);
-        const affairDateString = usera.showDate ? '"' + affair.date + '" —' : '';
+        const affairDateString = user.showDate ? '"' + affair.date + '" —' : '';
         let i = 1;
         return affairs.map((affair) => {
             return `${i++} — ${affairDateString} ${affair.affair}`;
