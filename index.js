@@ -23,6 +23,7 @@ const logsHelper = require('./helpers/logs');
 
 const bot = new Telegraf(cfg.TG_TOKEN);
 bd.connect();
+
 /**
  * intention- буфер намерений пользователя выполнить ввод данных следующим действием.
  * Хранит информацию о пользователе, изменения в которого хочет вносить админ
@@ -75,8 +76,15 @@ bot.use(async (ctx,next) => {
                 firstname: ctx.from.first_name,
                 lastname: ctx.from.last_name
             });
-        ctx.status = "student";
-        ctx.opener = "false";
+        console.log("Telegram ID: ", ctx.userId);
+        console.log("Admin ID: ", cfg.TG_ADMIN_ID);
+        if (ctx.userId == cfg.TG_ADMIN_ID) {
+            ctx.status = "admin";
+            ctx.opener = "true";
+        } else {
+            ctx.status = "student";
+            ctx.opener = "false";
+        }
     }else{
         ctx.status = user.status;
         ctx.note = user.note;
