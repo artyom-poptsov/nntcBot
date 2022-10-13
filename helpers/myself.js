@@ -58,37 +58,6 @@ module.exports.clear =  async (userId) => { //просто удаляет фай
     });
 }
 
-//Требовался только один раз, по этому заглушка
-//потребовался второй раз, но все равно заглушка
-/*module.exports.refactor = async (users) => {
-    const message = [];
-    users.forEach((user) => {
-        const filename = './myself_lists/' + user + '.txt';
-
-        try {
-            const file =  fs.readFileSync(filename);
-            let toDoList = JSON.parse(file);
-            toDoList = toDoList.map((unit) => {
-                return {
-                    affair: unit,
-                    date: "0 Января"
-                }
-            });
-            modelMyself.refactor(user, toDoList);
-            message.push(`${user} ИЗМЕНЕН`);
-
-        }
-        catch (err){
-            message.push(`${user} не имеет файла`);
-        }
-
-    });
-    return new Promise( resolve=>{
-        resolve(message.join('\n'))});
-    //return "Заглушка";
-
-}*/
-
 /**
  * Генерирует файл с листом самооценки
  * @param userId
