@@ -14,3 +14,12 @@ Node.js, Jest 26.6, Mongoose 5.11, Telegraf 3.38\
 Для начала работы с ботом, ессесно, дать команду /help
 
 Разработка еще идет, есть ряд запланированных изменений и новый функционал
+
+## Настройка
+
+`resources/config.js`:
+
+```
+module.exports.TG_TOKEN = "<your-bot-token>";
+module.exports.TG_ADMIN_ID = "<your-telegram-id>;
+```
