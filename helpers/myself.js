@@ -154,7 +154,7 @@ async function botDecorator(userId, affairs){
         return affairs.map((affair) => {
             const affairDateString = user.showDate ? '"' + affair.date + '" —' : '';
             const isDoneMark = affair.isDone ? "✅" : "🔲";
-            return `${i++} ${isDoneMark} ${affairDateString} ${affair.affair}`;
+            return `${isDoneMark} ${i++} — ${affairDateString} ${affair.affair}`;
         });
     }catch (err) {
         throw err;
