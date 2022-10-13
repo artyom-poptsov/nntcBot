@@ -241,7 +241,7 @@ async function hello(ctx){
  * @returns {Promise<void>}
  */
 async function mySelfMenu(ctx){
-    await ctx.reply('Меню самооценки:',
+    await ctx.reply('Задачи:',
          Markup.inlineKeyboard(
              [[ Markup.callbackButton(strings.keyboardConstants.MYSELF_LIST, strings.commands.MYSELF_LIST)],
              [Markup.callbackButton(strings.keyboardConstants.MYSELF_NEW, strings.commands.MYSELF_NEW)],
