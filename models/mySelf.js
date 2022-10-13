@@ -25,7 +25,8 @@ module.exports.addAffair = async (userId, data) => {
     }
     userAffairs.affairs.push({
         affair: data,
-        date: dateDecorator(Date.now())
+        date: dateDecorator(Date.now()),
+        isDone: false
     });
     try {
         await userAffairs.save();
