@@ -69,22 +69,24 @@ bot.use(async (ctx, next) => {
 bot.use(async (ctx,next) => {
     const user = await userModel.get(ctx.userId);
     if(!user){
-        await userModel.newUser(
-            {
-                userId: ctx.userId,
-                username: ctx.from.username,
-                firstname: ctx.from.first_name,
-                lastname: ctx.from.last_name
-            });
-        console.log("Telegram ID: ", ctx.userId);
-        console.log("Admin ID: ", cfg.TG_ADMIN_ID);
         if (ctx.userId == cfg.TG_ADMIN_ID) {
+            console.log("Creating the system administrator with ID ",
+                        ctx.userId);
             ctx.status = "admin";
             ctx.opener = "true";
         } else {
             ctx.status = "student";
             ctx.opener = "false";
         }
+        await userModel.newUser(
+            {
+                userId: ctx.userId,
+                username: ctx.from.username,
+                firstname: ctx.from.first_name,
+                lastname: ctx.from.last_name,
+                status: ctx.status,
+                opener: ctx.opener
+            });
     }else{
         ctx.status = user.status;
         ctx.note = user.note;
