@@ -1,9 +1,6 @@
 const {Telegraf} = require('telegraf');
 const {Markup} = require('telegraf');
 
-
-//const HttpsProxyAgent = require('https-proxy-agent');
-
 const cfg = require('./resources/config');
 const strings = require('./resources/strings');
 const otkrivator = require('./helpers/otkrivator');
@@ -281,18 +278,6 @@ bot.hears(strings.keyboardConstants.BELLS, async (ctx) => {
 bot.hears(strings.keyboardConstants.JITSY, async (ctx) => {
     await ctx.reply(ctx.userName + ', ' + await jitsi.health());
 });
-
-/**
- * заглушка на команду на открытие мастерских
-bot.command('open_m', async (ctx) => {
-    await ctx.reply(await otkrivator.openMasterskie());
-});*/
-
-//Когда то код был нужен для рефакторинга хранимых данных. Возможно, еще понадобиться
-//
-/*bot.command('ref', async (ctx) => {
-    await ctx.reply(await myself.refactor(cfg.VALID_USERS));
-});*/
 
 /**
  * Включает и выключает режим вывода дат в листах самооценки
