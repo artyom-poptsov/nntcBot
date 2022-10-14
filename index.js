@@ -26,8 +26,8 @@ bd.connect();
  * установка значений id, имени пользователя
  */
 bot.use(async (ctx, next) => {
-    ctx.userId = ctx.from.id.toString()
-    ctx.userName = ctx.from.first_name
+    ctx.userId = ctx.from.id.toString();
+    ctx.userName = ctx.from.first_name;
     await next();
 });
 
@@ -330,7 +330,7 @@ bot.hears(strings.keyboardConstants.RIGHTS, async (ctx) => {
  */
 bot.hears(strings.keyboardConstants.REPORTS, async (ctx) => {
     await reportMenu(ctx);
-})
+});
 
 /**
  * Если пользователь загрузил файл- проверяю намерение сгенерировать отчет
@@ -548,7 +548,7 @@ async function mySelfMenuCallback(ctx, callbackQuery){
             case strings.commands.MYSELF_LIST:
                 await ctx.reply(await myself.list(ctx.userId, ctx.userName));
                 break;
-            case strings.commands.MYSELF_NEW:"task-change-state"
+        case strings.commands.MYSELF_NEW:
                 await userModel.setState(ctx.userId,
                                          userModel.FSM_STATE.TASK_ADD);
                 await ctx.reply("Что ты сделал, дружочек?");
