@@ -411,14 +411,17 @@ bot.on('document', async (ctx) => {
 bot.on('text', async (ctx) => {
     const userState = await userModel.getState(ctx.userId);
     try {
-        if (userState === userModel.FSM_STATE.USER_MANAGEMENT_SELECT_USER) {
+        switch (userState) {
+        case userModel.FSM_STATE.USER_MANAGEMENT_SELECT_USER:
             const newState = userModel.FSM_STATE.USER_MANAGEMENT_SELECT_OPERATION;
             const objectID = ctx.message.text.trim();
             activitiesModel.add(ctx.userId, objectID);
             userModel.setState(ctx.userId, newState);
             console.log(ctx.userId, `[${userState}] -> [${newState}]`);
             await rightsMenu(ctx);
-        } else if (userState === userModel.FSM_STATE.USER_MANAGEMENT_SET_NOTE) {
+            break;
+
+        case userModel.FSM_STATE.USER_MANAGEMENT_SET_NOTE:
             const activity  = await activitiesModel.find(ctx.userId);
             if (! activity) {
                 const newState = userModel.FSM_STATE.DEFAULT;
@@ -434,26 +437,31 @@ bot.on('text', async (ctx) => {
                                                 ctx.message.text.trim());
                 await ctx.reply("Заметка повешена на пользователя");
             }
-        } else {
-            if (userState === userModel.FSM_STATE.TASK_ADD) {
-                await ctx.reply(await myself.new(ctx.userId, ctx.userName, ctx.message.text.trim()));
+            break;
+
+        case userModel.FSM_STATE.TASK_ADD:
+            await ctx.reply(await myself.new(ctx.userId,
+                                             ctx.userName,
+                                             ctx.message.text.trim()));
+            break;
+
+        case userModel.FSM_STATE.TASK_CHANGE_STATE:
+            userModel.setState(ctx.userId, userModel.FSM_STATE.DEFAULT);
+            await ctx.reply(await myself.changeState(ctx.userId, ctx.message.text.trim()));
+            break;
+
+        default:
+            if (ctx.message.text.startsWith(strings.commands.MYSELF_QUICK_NEW)) {
+                await ctx.reply(await myself.new(ctx.userId, ctx.userName, ctx.message.text.slice(2).trim()));
             } else {
-                if (ctx.message.text.startsWith(strings.commands.MYSELF_QUICK_NEW)) {
-                    await ctx.reply(await myself.new(ctx.userId, ctx.userName, ctx.message.text.slice(2).trim()));
+                if (ctx.message.text === strings.textConstants.CONFIRM_DELETE) {
+                    await ctx.reply(await myself.clear(ctx.userId));
                 } else {
-                    if (ctx.message.text === strings.textConstants.CONFIRM_DELETE) {
-                        await ctx.reply(await myself.clear(ctx.userId));
-                    } else {
-                        await hello(ctx);
-                    }
+                    await hello(ctx);
                 }
             }
-            if (userState === userModel.FSM_STATE.TASK_CHANGE_STATE) {
-                userModel.setState(ctx.userId, userModel.FSM_STATE.DEFAULT);
-                await ctx.reply(await myself.changeState(ctx.userId, ctx.message.text.trim()));
-            }
         }
-    }catch (err) {
+    } catch (err) {
         await ctx.reply(err.message);
     }
 });
