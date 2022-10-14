@@ -435,7 +435,18 @@ async function rightsMenuCallback(ctx, callbackQuery){
             case strings.commands.RIGHTS_USER_CHOISE:
                 newState = userModel.FSM_STATE.USER_MANAGEMENT_SELECT_USER;
                 userModel.setState(ctx.userId, newState);
+                let userList = await userModel.getAllUsers();
                 console.log(ctx.userId, `[${userState}] -> [${newState}]`);
+            await ctx.reply("Пользователи в системе:\n"
+                            + userList.map((user) => {
+                                const id = user.userId;
+                                const username = user.username;
+                                const firstname = user.firstname;
+                                const lastname = user.lastname;
+                                const fullname = `${firstname} ${lastname}`;
+                                const status = user.status;
+                                return `- ${id}: @${username} (${fullname}) — ${status}`;
+                            }).join('\n'));
                 await ctx.reply("Введи id пользователя, дружочек");
                 break;
             case strings.commands.RIGHTS_USER_CLEAR:
