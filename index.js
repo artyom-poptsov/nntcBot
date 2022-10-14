@@ -44,7 +44,6 @@ bd.connect();
  */
 const intention = {
     addTemplateToGenerateReport: {},
-    rights: {}
 };
 
 // ######## Middleware ###########
@@ -490,9 +489,13 @@ async function rightsMenuCallback(ctx, callbackQuery){
                 await ctx.reply("Введи id пользователя, дружочек");
                 break;
             case strings.commands.RIGHTS_USER_CLEAR:
-                intention.rights[ctx.userId].userChoiseId = null;
-                intention.rights[ctx.userId].userChoise = null;
-                await ctx.reply("Выбор сброшен");
+                activity  = await activitiesModel.find(ctx.userId);
+                newState = userModel.FSM_STATE.DEFAULT;
+                await activitiesModel.remove(activity.subjectID,
+                                             activity.objectID);
+                userModel.setState(ctx.userId, newState);
+                console.log(ctx.userId, `[${userState}] -> [${newState}]`);
+                await ctx.reply(`Редактирование пользователя ${activity.objectID} завершено`);
                 break;
             case strings.commands.RIGHTS_USER_SET_STATUS:
                 activity  = await activitiesModel.find(ctx.userId);

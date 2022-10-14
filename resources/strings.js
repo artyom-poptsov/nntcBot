@@ -26,7 +26,7 @@ const keyboardConstants = {
     RIGHTS_USER_SET_OPENER: "Изменить право открытия двери",
     RIGHTS_USER_SET_STATUS: "Изменить статус пользователя",
     RIGHTS_USER_SET_NOTE: "Оставить заметку",
-    RIGHTS_USER_CLEAR: "Отменить выбор",
+    RIGHTS_USER_CLEAR: "Завершить редактирование",
 }
 
 const commands = {
@@ -43,7 +43,7 @@ const commands = {
     RIGHTS_USER_SET_OPENER: "userSetOpener",
     RIGHTS_USER_SET_STATUS: "userSetStatus",
     RIGHTS_USER_SET_NOTE: "userSetNote",
-    RIGHTS_USER_CLEAR: "userChoiseClear",
+    RIGHTS_USER_CLEAR: "userManagementExit",
 }
 
 module.exports.welcomeMessage = {
