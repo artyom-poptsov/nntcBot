@@ -21,31 +21,6 @@ const logsHelper = require('./helpers/logs');
 const bot = new Telegraf(cfg.TG_TOKEN);
 bd.connect();
 
-/**
- * intention- буфер намерений пользователя выполнить ввод данных следующим действием.
- * Хранит информацию о пользователе, изменения в которого хочет вносить админ
- * Защита от сучайного срабатывания
- *
- * addCase - буфер, помогающий определить цель следующего сообщения- обработать как текст или записать в список дел
- * Считаем, что пользователь может передумать вводить новое дело и забьет другую команду, в таком случае
- * middlewares пометит свойство объекта == id пользователя на удаление и удалит при следующем вводе.
- *
- * addTemplateToGenerateReport - намерение загрузить заполненный шаблон для генерации отчетов по практике. Тот же принцип
- *
- * rights - объект, хранящий свойства вида
- *          idАдминистратора: userChoiseId- idПользователя, с которым админ ведет работу
- *          idАдминистратора: userChoise,
- *                  true(Команда пришла),
- *                  false(Ожидает текст),
- *                  null(Сброс намерения) есть ли намерение у админа
- *              выбрать пользователя для работы
- *          idАдминистратора: newNote - намерение пользователя ввести новую заметку. По тому же принципу, что выше
- * @type {{}}
- */
-const intention = {
-    addTemplateToGenerateReport: {},
-};
-
 // ######## Middleware ###########
 /**
  * установка значений id, имени пользователя
@@ -155,35 +130,7 @@ bot.use(async (ctx, next) => {
  //await  ctx.reply(`Запрос выполнен за ${ms} мс`);
 });
 
-/**
- * Защита от случайного срабатываия записи дел, генерации отчетов и управленяи пользователями.
- * Если сразу после предложения ввести новое дело,
- * загрузить шаблон,
- * или выполнить ввод в меню редактирования пользователя
- * пользователь выбрал другое действие на клавиатуре
- * или команду- ввод намерение отменяется.
- * Реализовано при помощи добавления свойств в глобальный объект
- *
- * Создает поля в объекте intention.rights, если необходимых для работы нет
- */
-bot.use(async (ctx, next) => {
-    const userId = ctx.from.id.toString();
-
-    if(userId in intention.addTemplateToGenerateReport){
-        if(intention.addTemplateToGenerateReport[userId] === true){
-            delete intention.addTemplateToGenerateReport[userId];
-        }
-        else{
-            intention.addTemplateToGenerateReport[userId] = true;
-        }
-    }
-    await next();
-});
-
-//bot.use(Telegraf.log());
-
 // ######## Middleware ###########
-
 
 /**
  * выводит приветсвенное сообщение и основную клавиатуру
@@ -233,6 +180,11 @@ async function mySelfMenu(ctx){
  * @returns {Promise<void>}
  */
 async function reportMenu(ctx){
+    const userState = await userModel.getState(ctx.userId);
+    const newState = userModel.FSM_STATE.REPORT_START;
+    userModel.setState(ctx.userId, newState);
+    console.log(ctx.userId, `[${userState}] -> [${newState}]`);
+
     await ctx.reply('Меню генерации отчетов по практике:',
         Markup.inlineKeyboard(
             [[ Markup.callbackButton(strings.keyboardConstants.REPORTS_MAN, strings.commands.REPORTS_MAN)],
@@ -244,7 +196,7 @@ async function reportMenu(ctx){
 /**
  * Выводит меню генерации пользователей.
  * Админ может выбрать пользоватлея для работы, в таком случае, начинает выводиться информация о пользователе
- * id пользователя, который в работе, храниться в глобальном объекте intention.rights
+ * id пользователя, который в работе
  * @param ctx
  * @returns {Promise<void>}
  */
@@ -384,20 +336,25 @@ bot.hears(strings.keyboardConstants.REPORTS, async (ctx) => {
  * Если пользователь загрузил файл- проверяю намерение сгенерировать отчет
  */
 bot.on('document', async (ctx) => {
+    const userState = await userModel.getState(ctx.userId);
+    let newState = userModel.FSM_STATE.DEFAULT;
     // await ctx.reply(ctx.message.document.file_id);
     try {
-         if (ctx.userId in intention.addTemplateToGenerateReport) {
-            delete intention.addTemplateToGenerateReport[ctx.userId];
+        if (userState === userModel.FSM_STATE.REPORT_GENERATE) {
             const fileId = ctx.message.document.file_id;
             //не хотел подключать API телеграмма к хэлперам, по этому подготавливаю
             //файл к загрузке в роутере
             const telegramFileResponse = await ctx.telegram.getFile(fileId);
             const pathToArchiveWithReports = await report.generate(ctx.userId, telegramFileResponse);
+            userModel.setState(ctx.userId, newState);
+            console.log(ctx.userId, `[${userState}] -> [${newState}]`);
             await ctx.replyWithDocument({source: pathToArchiveWithReports});
          }
     }catch (err) {
         await ctx.reply(err.message);
     }finally {
+        userModel.setState(ctx.userId, newState);
+        console.log(ctx.userId, `[${userState}] -> [${newState}]`);
         await report.garbageCollector(ctx.userId);
     }
 });
@@ -555,6 +512,8 @@ async function rightsMenuCallback(ctx, callbackQuery){
  * @returns {Promise<void>}
  */
 async function reportMenuCallback(ctx, callbackQuery){
+    const userState = await userModel.getState(ctx.userId);
+    let newState = userModel.FSM_STATE.DEFAULT;
     try {
         switch (callbackQuery) {
             case strings.commands.REPORTS_MAN:
@@ -564,11 +523,15 @@ async function reportMenuCallback(ctx, callbackQuery){
                 await ctx.replyWithDocument({source: report.template()});
                 break;
             case strings.commands.REPORTS_GENERATE:
-                intention.addTemplateToGenerateReport[ctx.userId] = false;
+                newState = userModel.FSM_STATE.REPORT_GENERATE;
+                userModel.setState(ctx.userId, newState);
+                console.log(ctx.userId, `[${userState}] -> [${newState}]`);
                 await ctx.reply("Дай мне заполненный шаблон, дружочек");
                 break;
         }
-    }catch (err) {
+    } catch (err) {
+        userModel.setState(ctx.userId, newState);
+        console.log(ctx.userId, `[${userState}] -> [${newState}]`);
         await ctx.reply(err.message);
     }
 }

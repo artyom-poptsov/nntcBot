@@ -22,6 +22,8 @@ module.exports.FSM_STATE = {
     USER_MANAGEMENT_SET_NOTE: "user-management-set-note",
     TASK_ADD: "task-add",
     TASK_CHANGE_STATE: "task-change-state",
+    REPORT_START: "report-start",
+    REPORT_GENERATE: "report-generate"
 };
 
 /**
