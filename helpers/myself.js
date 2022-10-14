@@ -58,6 +58,17 @@ module.exports.clear =  async (userId) => { //просто удаляет фай
     });
 }
 
+module.exports.changeState = async (userId, taskId) => {
+    return new Promise( async (resolve, reject) => {
+        try {
+            await modelMyself.changeState(userId, taskId);
+            resolve("Сделано");
+        } catch (err) {
+            reject(new Error(err.message));
+        }
+    });
+};
+
 /**
  * Генерирует файл с листом самооценки
  * @param userId
