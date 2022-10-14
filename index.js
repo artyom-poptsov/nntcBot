@@ -48,6 +48,7 @@ bd.connect();
 const intention = {
     addCase: {},
     addTemplateToGenerateReport: {},
+    taskChangeStatus: {},
     rights: {}
 };
 
@@ -182,6 +183,17 @@ bot.use(async (ctx, next) => {
             intention.addCase[userId] = true;
         }
     }
+
+    if (userId in intention.taskChangeStatus) {
+        console.log("debug 0");
+        if(intention.taskChangeStatus[userId] === true){
+            delete intention.taskChangeStatus[userId];
+        }
+        else{
+            intention.taskChangeStatus[userId] = true;
+        }
+    }
+
     if(userId in intention.addTemplateToGenerateReport){
         if(intention.addTemplateToGenerateReport[userId] === true){
             delete intention.addTemplateToGenerateReport[userId];
@@ -244,9 +256,8 @@ async function mySelfMenu(ctx){
     await ctx.reply(await myself.list(ctx.userId, ctx.userName));
     await ctx.reply("Действия:",
                     Markup.inlineKeyboard(
-                        [[Markup.callbackButton(strings.keyboardConstants.MYSELF_LIST, strings.commands.MYSELF_LIST)],
-                         [Markup.callbackButton(strings.keyboardConstants.MYSELF_NEW, strings.commands.MYSELF_NEW)],
-                         [Markup.callbackButton(strings.keyboardConstants.MYSELF_CLEAR, strings.commands.MYSELF_CLEAR)],
+                        [[Markup.callbackButton(strings.keyboardConstants.MYSELF_NEW, strings.commands.MYSELF_NEW)],
+                         [Markup.callbackButton(strings.keyboardConstants.MYSELF_CHANGE_STATUS, strings.commands.MYSELF_CHANGE_STATUS)],
                          [Markup.callbackButton(strings.keyboardConstants.MYSELF_GET_FILE, strings.commands.MYSELF_GET_FILE)],
                         ]).extra());
 }
@@ -457,6 +468,11 @@ bot.on('text', async (ctx) => {
                     }
                 }
             }
+            if (ctx.userId in intention.taskChangeStatus) {
+                console.log("debug 1", intention.taskChangeStatus[ctx.userId]);
+                delete intention.taskChangeStatus[ctx.userId];
+                await ctx.reply(await myself.changeState(ctx.userId, ctx.message.text.trim()));
+            }
         }
     }catch (err) {
         await ctx.reply(err.message);
@@ -552,8 +568,9 @@ async function mySelfMenuCallback(ctx, callbackQuery){
                 intention.addCase[ctx.userId] = false;
                 await ctx.reply("Что ты сделал, дружочек?");
                 break;
-            case strings.commands.MYSELF_CLEAR:
-                await ctx.reply(strings.textConstants.DELETE);
+            case strings.commands.MYSELF_CHANGE_STATUS:
+                intention.taskChangeStatus[ctx.userId] = false;
+                await ctx.reply("Введте номер задачи для изменения статуса");
                 break;
             case strings.commands.MYSELF_GET_FILE:
                 await replyMyselfFile(ctx.userId, ctx);
