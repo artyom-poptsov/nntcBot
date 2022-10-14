@@ -119,7 +119,7 @@ module.exports.garbageCollector = async (userId) => {
 async function botDecorator(userId, affairs){
     try{
         const user = await modelUser.get(userId);
-        let i = 1;
+        let i = 0;
         return affairs.map((affair) => {
             const affairDateString = user.showDate ? '"' + affair.date + '" —' : '';
             const isDoneMark = affair.isDone ? "✅" : "🔲";
