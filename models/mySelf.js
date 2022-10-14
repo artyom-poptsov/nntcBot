@@ -65,6 +65,20 @@ module.exports.get = (userId) => {
     });
 }
 
+module.exports.changeState = async (userId, taskId) => {
+    let userAffairs = await Affair.findOne({userId: userId}).exec();
+    if(! userAffairs){
+        resolve("Ошибка: Нет такой задачи: " + taskId);
+    } else {
+        let affair = userAffairs.affairs[taskId];
+        affair.isDone = ! affair.isDone;
+        console.log(userAffairs);
+        await Affair.updateOne({_id: userAffairs._id},
+                               {$set: {affairs: userAffairs.affairs}},
+                               {});
+    }
+};
+
 /**
  * Требуется чтобы один раз заполнить базу данными из файлов
  * @param userId
