@@ -17,6 +17,9 @@ const Users = mongoose.model('user', usersSchema);
 
 module.exports.FSM_STATE = {
     DEFAULT: "default",
+    USER_MANAGEMENT_SELECT_USER: "user-management-select-user",
+    USER_MANAGEMENT_SELECT_OPERATION: "user-management-select-operation",
+    USER_MANAGEMENT_SET_NOTE: "user-management-set-note",
     TASK_ADD: "task-add",
     TASK_CHANGE_STATE: "task-change-state",
 };

@@ -10,6 +10,7 @@ const otkrivator = require('./helpers/otkrivator');
 const jitsi = require('./helpers/jitsi');
 const bells = require('./helpers/bells');
 const myself = require('./helpers/myself');
+const activitiesModel = require('./models/activities');
 const report = require('./helpers/report-generator');
 const bd = require('./models/botBd');
 const userModel = require('./models/users');
@@ -177,16 +178,6 @@ bot.use(async (ctx, next) => {
             intention.addTemplateToGenerateReport[userId] = true;
         }
     }
-    if(userId in intention.rights){
-        intention.rights[userId].userChoise = (intention.rights[userId].userChoise) ? false : null;
-        intention.rights[userId].newNote = (intention.rights[userId].newNote) ? false : null;
-
-    }else{
-        intention.rights[userId] = {
-            userChoise: null,
-            userChoiseId: null
-        }
-    }
     await next();
 });
 
@@ -259,21 +250,25 @@ async function reportMenu(ctx){
  * @returns {Promise<void>}
  */
 async function rightsMenu(ctx){
+    const userState = await userModel.getState(ctx.userId);
+    const activity  = await activitiesModel.find(ctx.userId);
     const message = ['Меню управления пользователями: '];
-    const keyboard = [[ Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_CHOISE, strings.commands.RIGHTS_USER_CHOISE)]];
-    if((ctx.userId in intention.rights) && intention.rights[ctx.userId].userChoiseId !== null && intention.rights[ctx.userId].userChoiseId !== undefined){
-        message.push(await rights.getUserInfo(intention.rights[ctx.userId].userChoiseId));
-        if(message[1].startsWith('Выбран пользователь')){
-            keyboard.push([Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_SET_STATUS, strings.commands.RIGHTS_USER_SET_STATUS)],
-                [Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_SET_OPENER, strings.commands.RIGHTS_USER_SET_OPENER)],
-                [Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_SET_NOTE, strings.commands.RIGHTS_USER_SET_NOTE)],
-                [Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_CLEAR, strings.commands.RIGHTS_USER_CLEAR)]);
-        }else{
-            intention.rights[ctx.userId].userChoiseId = null;
-        }
-    }else{
+    const keyboard = [[ Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_CHOISE,
+                                              strings.commands.RIGHTS_USER_CHOISE) ]];
+    if (! activity) {
         message.push('Не выбран пользователь для изменения прав доступа');
+    } else {
+        message.push(await rights.getUserInfo(activity.objectID));
+        keyboard.push([Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_SET_STATUS,
+                                             strings.commands.RIGHTS_USER_SET_STATUS)],
+                      [Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_SET_OPENER,
+                                             strings.commands.RIGHTS_USER_SET_OPENER)],
+                      [Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_SET_NOTE,
+                                             strings.commands.RIGHTS_USER_SET_NOTE)],
+                      [Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_CLEAR,
+                                             strings.commands.RIGHTS_USER_CLEAR)]);
     }
+
     await ctx.reply(message.join('\n'), Markup.inlineKeyboard(
         keyboard).extra());
 }
@@ -417,12 +412,29 @@ bot.on('document', async (ctx) => {
 bot.on('text', async (ctx) => {
     const userState = await userModel.getState(ctx.userId);
     try {
-        if(intention.rights[ctx.userId].userChoise === false){
-            intention.rights[ctx.userId].userChoiseId = ctx.message.text.trim();
+        if (userState === userModel.FSM_STATE.USER_MANAGEMENT_SELECT_USER) {
+            const newState = userModel.FSM_STATE.USER_MANAGEMENT_SELECT_OPERATION;
+            const objectID = ctx.message.text.trim();
+            activitiesModel.add(ctx.userId, objectID);
+            userModel.setState(ctx.userId, newState);
+            console.log(ctx.userId, `[${userState}] -> [${newState}]`);
             await rightsMenu(ctx);
-        }else if(intention.rights[ctx.userId].newNote === false){
-            await rights.changeUserProperty(intention.rights[ctx.userId].userChoiseId, 'note', ctx.message.text.trim());
-            await ctx.reply("Заметка повешена на пользователя");
+        } else if (userState === userModel.FSM_STATE.USER_MANAGEMENT_SET_NOTE) {
+            const activity  = await activitiesModel.find(ctx.userId);
+            if (! activity) {
+                const newState = userModel.FSM_STATE.DEFAULT;
+                userModel.setState(ctx.userId, newState);
+                console.log(ctx.userId, `[${userState}] -> [${newState}]`);
+                ctx.reply("ОШИБКА: Не выбран пользователь");
+            } else {
+                const newState = userModel.FSM_STATE.DEFAULT;
+                userModel.setState(ctx.userId, newState);
+                console.log(ctx.userId, `[${userState}] -> [${newState}]`);
+                await rights.changeUserProperty(activity.objectID,
+                                                'note',
+                                                ctx.message.text.trim());
+                await ctx.reply("Заметка повешена на пользователя");
+            }
         } else {
             if (userState === userModel.FSM_STATE.TASK_ADD) {
                 await ctx.reply(await myself.new(ctx.userId, ctx.userName, ctx.message.text.trim()));
@@ -466,10 +478,14 @@ bot.on('callback_query', async (ctx) =>{
  * @returns {Promise<void>}
  */
 async function rightsMenuCallback(ctx, callbackQuery){
+    const userState = await userModel.getState(ctx.userId);
+    let newState = false;
     try{
         switch (callbackQuery) {
             case strings.commands.RIGHTS_USER_CHOISE:
-                intention.rights[ctx.userId].userChoise = true;
+                newState = userModel.FSM_STATE.USER_MANAGEMENT_SELECT_USER;
+                userModel.setState(ctx.userId, newState);
+                console.log(ctx.userId, `[${userState}] -> [${newState}]`);
                 await ctx.reply("Введи id пользователя, дружочек");
                 break;
             case strings.commands.RIGHTS_USER_CLEAR:
@@ -486,7 +502,9 @@ async function rightsMenuCallback(ctx, callbackQuery){
                 await ctx.reply("Права на замок изменены");
                 break;
             case strings.commands.RIGHTS_USER_SET_NOTE:
-                intention.rights[ctx.userId].newNote = true;
+                newState = userModel.FSM_STATE.USER_MANAGEMENT_SET_NOTE;
+                userModel.setState(ctx.userId, newState);
+                console.log(ctx.userId, `[${userState}] -> [${newState}]`);
                 await ctx.reply("Введи новую заметку о пользователе, дружочек");
                 break;
         }
