@@ -46,7 +46,6 @@ bd.connect();
  * @type {{}}
  */
 const intention = {
-    addCase: {},
     addTemplateToGenerateReport: {},
     taskChangeStatus: {},
     rights: {}
@@ -174,15 +173,6 @@ bot.use(async (ctx, next) => {
  */
 bot.use(async (ctx, next) => {
     const userId = ctx.from.id.toString();
-
-    if(userId in intention.addCase){
-        if(intention.addCase[userId] === true){
-           delete intention.addCase[userId];
-        }
-        else{
-            intention.addCase[userId] = true;
-        }
-    }
 
     if(userId in intention.addTemplateToGenerateReport){
         if(intention.addTemplateToGenerateReport[userId] === true){
@@ -445,8 +435,7 @@ bot.on('text', async (ctx) => {
             await rights.changeUserProperty(intention.rights[ctx.userId].userChoiseId, 'note', ctx.message.text.trim());
             await ctx.reply("Заметка повешена на пользователя");
         } else {
-            if (ctx.userId in intention.addCase) {     //Если бот предложил пользователю ввести дело, то в объекте будет свойство == id
-                delete intention.addCase[ctx.userId];
+            if (userState === userModel.FSM_STATE.TASK_ADD) {
                 await ctx.reply(await myself.new(ctx.userId, ctx.userName, ctx.message.text.trim()));
             } else {
                 if (ctx.message.text.startsWith(strings.commands.MYSELF_QUICK_NEW)) {
@@ -459,8 +448,8 @@ bot.on('text', async (ctx) => {
                     }
                 }
             }
-            if (userState === "task-change-state") {
-                userModel.setState(ctx.userId, "default");
+            if (userState === userModel.FSM_STATE.TASK_CHANGE_STATE) {
+                userModel.setState(ctx.userId, userModel.FSM_STATE.DEFAULT);
                 await ctx.reply(await myself.changeState(ctx.userId, ctx.message.text.trim()));
             }
         }
@@ -554,12 +543,14 @@ async function mySelfMenuCallback(ctx, callbackQuery){
             case strings.commands.MYSELF_LIST:
                 await ctx.reply(await myself.list(ctx.userId, ctx.userName));
                 break;
-            case strings.commands.MYSELF_NEW:
-                intention.addCase[ctx.userId] = false;
+            case strings.commands.MYSELF_NEW:"task-change-state"
+                await userModel.setState(ctx.userId,
+                                         userModel.FSM_STATE.TASK_ADD);
                 await ctx.reply("Что ты сделал, дружочек?");
                 break;
             case strings.commands.MYSELF_CHANGE_STATUS:
-                await userModel.setState(ctx.userId, "task-change-state");
+                await userModel.setState(ctx.userId,
+                                         userModel.FSM_STATE.TASK_CHANGE_STATE);
                 await ctx.reply("Введте номер задачи для изменения статуса");
                 break;
             case strings.commands.MYSELF_GET_FILE:

@@ -15,6 +15,12 @@ const usersSchema = mongoose.Schema({
 
 const Users = mongoose.model('user', usersSchema);
 
+module.exports.FSM_STATE = {
+    DEFAULT: "default",
+    TASK_ADD: "task-add",
+    TASK_CHANGE_STATE: "task-change-state",
+};
+
 /**
  * Get the user state machine state.
  * @param userId User ID for the state fetch.
