@@ -14,6 +14,8 @@ const userModel = require('./models/users');
 const logs = require('./models/logs');
 const rights = require('./helpers/cowSuperPowers');
 const logsHelper = require('./helpers/logs');
+const {keyboardConstants} = require("./resources/strings");
+const {FSM_STATE} = require("./models/users");
 
 const bot = new Telegraf(cfg.TG_TOKEN);
 bd.connect();
@@ -33,12 +35,12 @@ bot.use(async (ctx, next) => {
  * и устанавливает в обхект ctx дополнительные сведения о пользователе.
  * Докидывает пользователя в базу, если его нет.
  */
-bot.use(async (ctx,next) => {
+bot.use(async (ctx, next) => {
     const user = await userModel.get(ctx.userId);
-    if(!user){
+    if (!user) {
         if (ctx.userId == cfg.TG_ADMIN_ID) {
             console.log("Creating the system administrator with ID ",
-                        ctx.userId);
+                ctx.userId);
             ctx.status = "admin";
             ctx.opener = "true";
         } else {
@@ -54,12 +56,12 @@ bot.use(async (ctx,next) => {
                 status: ctx.status,
                 opener: ctx.opener
             });
-    }else{
+    } else {
         ctx.status = user.status;
         ctx.note = user.note;
         ctx.opener = (user.status !== 'admin') ? user.opener : true;
 
-        if(user.username === "null"){
+        if (user.username === "null") {
             await userModel.setUserInfo(
                 {
                     userId: ctx.userId,
@@ -83,12 +85,12 @@ bot.use(async (ctx, next) => {
         note: ctx.note,
         time: new Date(),
     };
-    switch (ctx.updateType){
+    switch (ctx.updateType) {
         case "message":
-            if(ctx.updateSubTypes[0] === 'document'){
+            if (ctx.updateSubTypes[0] === 'document') {
                 recordForLog.messageType = 'document';
                 recordForLog.message = 'document';
-            }else{
+            } else {
                 recordForLog.messageType = 'message';
                 recordForLog.message = ctx.message.text;
             }
@@ -97,7 +99,8 @@ bot.use(async (ctx, next) => {
             recordForLog.messageType = 'callback_query';
             recordForLog.message = ctx.update.callback_query.data;
             break;
-        default: break;
+        default:
+            break;
     }
     ctx.messageType = recordForLog.messageType;
     ctx.request = recordForLog.message;
@@ -109,9 +112,9 @@ bot.use(async (ctx, next) => {
  * отсекаю пользователям действия, на которые у них нет прав
  */
 bot.use(async (ctx, next) => {
-    if(await rights.hasAccess(ctx.status, ctx.messageType, ctx.request, ctx.opener)){
+    if (rights.hasAccess(ctx.status, ctx.messageType, ctx.request, ctx.opener)) {
         await next();
-    }else{
+    } else {
         await ctx.reply("Нет доступа");
     }
 
@@ -123,8 +126,8 @@ bot.use(async (ctx, next) => {
 bot.use(async (ctx, next) => {
     const start = new Date();
     await next();
-    const ms  = new Date() - start;
- //await  ctx.reply(`Запрос выполнен за ${ms} мс`);
+    const ms = new Date() - start;
+    //await  ctx.reply(`Запрос выполнен за ${ms} мс`);
 });
 
 // ######## Middleware ###########
@@ -134,7 +137,7 @@ bot.use(async (ctx, next) => {
  * @param ctx
  * @returns {Promise<void>}
  */
-async function hello(ctx){
+async function hello(ctx) {
     let welcomeMessage = 'Добро пожаловать, ' + ctx.userName + '\n';
     let mainKeyboard;
 
@@ -161,14 +164,14 @@ async function hello(ctx){
  * @param ctx
  * @returns {Promise<void>}
  */
-async function mySelfMenu(ctx){
-    await ctx.reply(await myself.list(ctx.userId, ctx.userName));
-    await ctx.reply("Действия:",
-                    Markup.inlineKeyboard(
-                        [[Markup.callbackButton(strings.keyboardConstants.MYSELF_NEW, strings.commands.MYSELF_NEW)],
-                         [Markup.callbackButton(strings.keyboardConstants.MYSELF_CHANGE_STATUS, strings.commands.MYSELF_CHANGE_STATUS)],
-                         [Markup.callbackButton(strings.keyboardConstants.MYSELF_GET_FILE, strings.commands.MYSELF_GET_FILE)],
-                        ]).extra());
+async function mySelfMenu(ctx) {
+    const tasks = await myself.list(ctx.userId, ctx.userName);
+    await ctx.reply('Задачи:',
+        Markup.inlineKeyboard(tasks.map(task => {
+            return [Markup.callbackButton(task, strings.commands.TASK_CHANGE_STATUS + "")]
+        })).extra()
+    )
+    await ctx.reply('Выберите действие:', strings.tasksKeyboard);
 }
 
 /**
@@ -176,15 +179,16 @@ async function mySelfMenu(ctx){
  * @param ctx
  * @returns {Promise<void>}
  */
-async function reportMenu(ctx){
+async function reportMenu(ctx) {
     const userState = await userModel.getState(ctx.userId);
     const newState = userModel.FSM_STATE.REPORT_START;
-    userModel.setState(ctx.userId, newState);
+    await userModel.setState(ctx.userId, newState);
     console.log(ctx.userId, `[${userState}] -> [${newState}]`);
 
     await ctx.reply('Меню генерации отчетов по практике:',
         Markup.inlineKeyboard(
-            [[ Markup.callbackButton(strings.keyboardConstants.REPORTS_MAN, strings.commands.REPORTS_MAN)],
+            [
+                [Markup.callbackButton(strings.keyboardConstants.REPORTS_MAN, strings.commands.REPORTS_MAN)],
                 [Markup.callbackButton(strings.keyboardConstants.REPORTS_TEMPLATE, strings.commands.REPORTS_TEMPLATE)],
                 [Markup.callbackButton(strings.keyboardConstants.REPORTS_GENERATE, strings.commands.REPORTS_GENERATE)],
             ]).extra());
@@ -197,35 +201,42 @@ async function reportMenu(ctx){
  * @param ctx
  * @returns {Promise<void>}
  */
-async function rightsMenu(ctx){
+async function rightsMenu(ctx) {
     const userState = await userModel.getState(ctx.userId);
-    const activity  = await activitiesModel.find(ctx.userId);
+    const activity = await activitiesModel.find(ctx.userId);
     const message = ['Меню управления пользователями: '];
-    const keyboard = [[ Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_CHOISE,
-                                              strings.commands.RIGHTS_USER_CHOISE) ]];
-    if (! activity) {
+    const keyboard = [[Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_CHOISE,
+        strings.commands.RIGHTS_USER_CHOISE)]];
+    if (!activity) {
         message.push('Не выбран пользователь для изменения прав доступа');
     } else {
         message.push(await rights.getUserInfo(activity.objectID));
         keyboard.push([Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_SET_STATUS,
-                                             strings.commands.RIGHTS_USER_SET_STATUS)],
-                      [Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_SET_OPENER,
-                                             strings.commands.RIGHTS_USER_SET_OPENER)],
-                      [Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_SET_NOTE,
-                                             strings.commands.RIGHTS_USER_SET_NOTE)],
-                      [Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_CLEAR,
-                                             strings.commands.RIGHTS_USER_CLEAR)]);
+                strings.commands.RIGHTS_USER_SET_STATUS)],
+            [Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_SET_OPENER,
+                strings.commands.RIGHTS_USER_SET_OPENER)],
+            [Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_SET_NOTE,
+                strings.commands.RIGHTS_USER_SET_NOTE)],
+            [Markup.callbackButton(strings.keyboardConstants.RIGHTS_USER_CLEAR,
+                strings.commands.RIGHTS_USER_CLEAR)]);
     }
 
     await ctx.reply(message.join('\n'), Markup.inlineKeyboard(
         keyboard).extra());
 }
 
+/**
+ * Приветствует и выставляет состояние в default
+ */
 bot.start(async (ctx) => {
+    await userModel.setState(ctx.userId, userModel.FSM_STATE.DEFAULT);
     await hello(ctx);
 });
 
-bot.help( async (ctx) => {
+/**
+ * Просто приветствует
+ */
+bot.help(async (ctx) => {
     await hello(ctx);
 });
 
@@ -253,7 +264,7 @@ bot.command('logs', async (ctx) => {
         await ctx.replyWithDocument({source: pathsToLogs[0]});
         await ctx.replyWithDocument({source: pathsToLogs[1]});
         await logsHelper.garbageCollector(pathsToLogs);
-    }catch (err) {
+    } catch (err) {
         await ctx.reply(err.message);
     }
 });
@@ -286,9 +297,9 @@ bot.command('showDate', async (ctx) => {
     try {
         const show = await userModel.get(ctx.userId);
         const queryRes = await userModel.dateDisplay(ctx.userId, !show.showDate);
-        if(queryRes) {
+        if (queryRes) {
             await ctx.reply(`Вывод дат в листах самооценки ${(!show.showDate) ? 'включен' : 'выключен'}`);
-        }else{
+        } else {
             await ctx.reply("Твоих данных нет в базе, дружочек");
         }
     } catch (err) {
@@ -296,12 +307,12 @@ bot.command('showDate', async (ctx) => {
     }
 });
 
-/**
- * Команда на вывод меню самооценки
- */
-bot.hears(strings.keyboardConstants.MYSELF, async (ctx) => {
-    await mySelfMenu(ctx);
-});
+// /**
+//  * Команда на вывод меню самооценки
+//  */
+// bot.hears(strings.keyboardConstants.MYSELF, async (ctx) => {
+//     await mySelfMenu(ctx);
+// });
 
 /**
  * Команда на вывод меню управления правами пользователей
@@ -331,14 +342,14 @@ bot.on('document', async (ctx) => {
             //файл к загрузке в роутере
             const telegramFileResponse = await ctx.telegram.getFile(fileId);
             const pathToArchiveWithReports = await report.generate(ctx.userId, telegramFileResponse);
-            userModel.setState(ctx.userId, newState);
+            await userModel.setState(ctx.userId, newState);
             console.log(ctx.userId, `[${userState}] -> [${newState}]`);
             await ctx.replyWithDocument({source: pathToArchiveWithReports});
-         }
-    }catch (err) {
+        }
+    } catch (err) {
         await ctx.reply(err.message);
-    }finally {
-        userModel.setState(ctx.userId, newState);
+    } finally {
+        await userModel.setState(ctx.userId, newState);
         console.log(ctx.userId, `[${userState}] -> [${newState}]`);
         await report.garbageCollector(ctx.userId);
     }
@@ -352,56 +363,75 @@ bot.on('document', async (ctx) => {
  */
 bot.on('text', async (ctx) => {
     const userState = await userModel.getState(ctx.userId);
+    console.log(userState);
+    const messageText = ctx.message.text;
     try {
         switch (userState) {
-        case userModel.FSM_STATE.USER_MANAGEMENT_SELECT_USER:
-            const newState = userModel.FSM_STATE.USER_MANAGEMENT_SELECT_OPERATION;
-            const objectID = ctx.message.text.trim();
-            activitiesModel.add(ctx.userId, objectID);
-            userModel.setState(ctx.userId, newState);
-            console.log(ctx.userId, `[${userState}] -> [${newState}]`);
-            await rightsMenu(ctx);
-            break;
-
-        case userModel.FSM_STATE.USER_MANAGEMENT_SET_NOTE:
-            const activity  = await activitiesModel.find(ctx.userId);
-            if (! activity) {
-                const newState = userModel.FSM_STATE.DEFAULT;
-                userModel.setState(ctx.userId, newState);
+            case userModel.FSM_STATE.USER_MANAGEMENT_SELECT_USER:
+                const newState = userModel.FSM_STATE.USER_MANAGEMENT_SELECT_OPERATION;
+                const objectID = ctx.message.text.trim();
+                await activitiesModel.add(ctx.userId, objectID);
+                await userModel.setState(ctx.userId, newState);
                 console.log(ctx.userId, `[${userState}] -> [${newState}]`);
-                ctx.reply("ОШИБКА: Не выбран пользователь");
-            } else {
-                const newState = userModel.FSM_STATE.DEFAULT;
-                userModel.setState(ctx.userId, newState);
-                console.log(ctx.userId, `[${userState}] -> [${newState}]`);
-                await rights.changeUserProperty(activity.objectID,
-                                                'note',
-                                                ctx.message.text.trim());
-                await ctx.reply("Заметка повешена на пользователя");
-            }
-            break;
+                await rightsMenu(ctx);
+                break;
 
-        case userModel.FSM_STATE.TASK_ADD:
-            await ctx.reply(await myself.new(ctx.userId,
-                                             ctx.userName,
-                                             ctx.message.text.trim()));
-            break;
-
-        case userModel.FSM_STATE.TASK_CHANGE_STATE:
-            userModel.setState(ctx.userId, userModel.FSM_STATE.DEFAULT);
-            await ctx.reply(await myself.changeState(ctx.userId, ctx.message.text.trim()));
-            break;
-
-        default:
-            if (ctx.message.text.startsWith(strings.commands.MYSELF_QUICK_NEW)) {
-                await ctx.reply(await myself.new(ctx.userId, ctx.userName, ctx.message.text.slice(2).trim()));
-            } else {
-                if (ctx.message.text === strings.textConstants.CONFIRM_DELETE) {
-                    await ctx.reply(await myself.clear(ctx.userId));
+            case userModel.FSM_STATE.USER_MANAGEMENT_SET_NOTE:
+                const activity = await activitiesModel.find(ctx.userId);
+                if (!activity) {
+                    const newState = userModel.FSM_STATE.DEFAULT;
+                    await userModel.setState(ctx.userId, newState);
+                    console.log(ctx.userId, `[${userState}] -> [${newState}]`);
+                    await ctx.reply("ОШИБКА: Не выбран пользователь");
                 } else {
-                    await hello(ctx);
+                    const newState = userModel.FSM_STATE.DEFAULT;
+                    await userModel.setState(ctx.userId, newState);
+                    console.log(ctx.userId, `[${userState}] -> [${newState}]`);
+                    await rights.changeUserProperty(activity.objectID,
+                        'note',
+                        ctx.message.text.trim());
+                    await ctx.reply("Заметка повешена на пользователя");
                 }
-            }
+                break;
+
+            case userModel.FSM_STATE.TASK_ADD:
+                await ctx.reply(await myself.new(ctx.userId,
+                    ctx.userName,
+                    ctx.message.text.trim()));
+                break;
+            case userModel.FSM_STATE.TASKS:
+                switch (messageText) {
+                    case keyboardConstants.TASKS_BACK:
+                        await ctx.reply(ctx.userId, "Возвращаемся назад");
+                        await myself.changeState(ctx.userId, FSM_STATE.DEFAULT);
+                        break;
+                }
+                break;
+            case userModel.FSM_STATE.TASK_CHANGE_STATE:
+                await userModel.setState(ctx.userId, userModel.FSM_STATE.DEFAULT);
+                await ctx.reply(await myself.changeState(ctx.userId, ctx.message.text.trim()));
+                break;
+
+            case userModel.FSM_STATE.DEFAULT:
+                switch (messageText) {
+                    case keyboardConstants.MYSELF:
+                        await userModel.setState(ctx.userId, userModel.FSM_STATE.TASKS);
+                        await mySelfMenu(ctx);
+                }
+                break;
+
+
+            default:
+
+                if (ctx.message.text.startsWith(strings.commands.MYSELF_QUICK_NEW)) {
+                    await ctx.reply(await myself.new(ctx.userId, ctx.userName, ctx.message.text.slice(2).trim()));
+                } else {
+                    if (ctx.message.text === strings.textConstants.CONFIRM_DELETE) {
+                        await ctx.reply(await myself.clear(ctx.userId));
+                    } else {
+                        await hello(ctx);
+                    }
+                }
         }
     } catch (err) {
         await ctx.reply(err.message);
@@ -413,11 +443,12 @@ bot.on('text', async (ctx) => {
 /**
  * Роутер нажатия кнопок inline клавиатуры
  */
-bot.on('callback_query', async (ctx) =>{
-        const callbackQuery = ctx.callbackQuery.data;
-        await mySelfMenuCallback(ctx, callbackQuery);
-        await reportMenuCallback(ctx, callbackQuery);
-        await rightsMenuCallback(ctx, callbackQuery);
+bot.on('callback_query', async (ctx) => {
+    const callbackQuery = ctx.callbackQuery.data;
+
+    await mySelfMenuCallback(ctx, callbackQuery);
+    await reportMenuCallback(ctx, callbackQuery);
+    await rightsMenuCallback(ctx, callbackQuery);
 });
 
 /**
@@ -426,77 +457,77 @@ bot.on('callback_query', async (ctx) =>{
  * @param callbackQuery
  * @returns {Promise<void>}
  */
-async function rightsMenuCallback(ctx, callbackQuery){
+async function rightsMenuCallback(ctx, callbackQuery) {
     const userState = await userModel.getState(ctx.userId);
     let newState = false;
     let activity = false;
-    try{
+    try {
         switch (callbackQuery) {
             case strings.commands.RIGHTS_USER_CHOISE:
                 newState = userModel.FSM_STATE.USER_MANAGEMENT_SELECT_USER;
-                userModel.setState(ctx.userId, newState);
+                await userModel.setState(ctx.userId, newState);
                 let userList = await userModel.getAllUsers();
                 console.log(ctx.userId, `[${userState}] -> [${newState}]`);
-            await ctx.reply("Пользователи в системе:\n"
-                            + userList.map((user) => {
-                                const id = user.userId;
-                                const username = user.username;
-                                const firstname = user.firstname;
-                                const lastname = user.lastname;
-                                const fullname = `${firstname} ${lastname}`;
-                                const status = user.status;
-                                return `- ${id}: @${username} (${fullname}) — ${status}`;
-                            }).join('\n'));
+                await ctx.reply("Пользователи в системе:\n"
+                    + userList.map((user) => {
+                        const id = user.userId;
+                        const username = user.username;
+                        const firstname = user.firstname;
+                        const lastname = user.lastname;
+                        const fullname = `${firstname} ${lastname}`;
+                        const status = user.status;
+                        return `- ${id}: @${username} (${fullname}) — ${status}`;
+                    }).join('\n'));
                 await ctx.reply("Введи id пользователя, дружочек");
                 break;
             case strings.commands.RIGHTS_USER_CLEAR:
-                activity  = await activitiesModel.find(ctx.userId);
+                activity = await activitiesModel.find(ctx.userId);
                 newState = userModel.FSM_STATE.DEFAULT;
                 await activitiesModel.remove(activity.subjectID,
-                                             activity.objectID);
-                userModel.setState(ctx.userId, newState);
+                    activity.objectID);
+                await userModel.setState(ctx.userId, newState);
                 console.log(ctx.userId, `[${userState}] -> [${newState}]`);
                 await ctx.reply(`Редактирование пользователя ${activity.objectID} завершено`);
                 break;
             case strings.commands.RIGHTS_USER_SET_STATUS:
-                activity  = await activitiesModel.find(ctx.userId);
-                if (! activity) {
+                activity = await activitiesModel.find(ctx.userId);
+                if (!activity) {
                     ctx.reply("ОШИБКА: Не выбран пользователь");
                 } else {
                     newState = userModel.FSM_STATE.DEFAULT;
-                    userModel.setState(ctx.userId, newState);
+                    await userModel.setState(ctx.userId, newState);
                     console.log(ctx.userId, `[${userState}] -> [${newState}]`);
                     await rights.changeUserProperty(activity.objectID,
-                                                    'status');
+                        'status');
                     await ctx.reply("Статус изменен");
                 }
                 break;
             case strings.commands.RIGHTS_USER_SET_OPENER:
-                activity  = await activitiesModel.find(ctx.userId);
-                if (! activity) {
+                activity = await activitiesModel.find(ctx.userId);
+                if (!activity) {
                     ctx.reply("ОШИБКА: Не выбран пользователь");
                 } else {
                     newState = userModel.FSM_STATE.DEFAULT;
-                    userModel.setState(ctx.userId, newState);
+                    await userModel.setState(ctx.userId, newState);
                     console.log(ctx.userId, `[${userState}] -> [${newState}]`);
                     await rights.changeUserProperty(activity.objectID,
-                                                    'opener');
+                        'opener');
                     await ctx.reply("Права на замок изменены");
                 }
                 break;
             case strings.commands.RIGHTS_USER_SET_NOTE:
                 activity = await activitiesModel.find(ctx.userId);
-                if (! activity) {
+                if (!activity) {
                     ctx.reply("ОШИБКА: Не выбран пользователь");
                 } else {
                     newState = userModel.FSM_STATE.USER_MANAGEMENT_SET_NOTE;
-                    userModel.setState(ctx.userId, newState);
+                    await userModel.setState(ctx.userId, newState);
                     console.log(ctx.userId, `[${userState}] -> [${newState}]`);
                     await ctx.reply("Введи новую заметку о пользователе, дружочек");
                 }
                 break;
         }
-    }catch (err) {
+    } catch (err) {
         await ctx.reply(err.message);
     }
 }
@@ -507,7 +538,7 @@ async function rightsMenuCallback(ctx, callbackQuery){
  * @param callbackQuery
  * @returns {Promise<void>}
  */
-async function reportMenuCallback(ctx, callbackQuery){
+async function reportMenuCallback(ctx, callbackQuery) {
     const userState = await userModel.getState(ctx.userId);
     let newState = userModel.FSM_STATE.DEFAULT;
     try {
@@ -520,13 +551,13 @@ async function reportMenuCallback(ctx, callbackQuery){
                 break;
             case strings.commands.REPORTS_GENERATE:
                 newState = userModel.FSM_STATE.REPORT_GENERATE;
-                userModel.setState(ctx.userId, newState);
+                await userModel.setState(ctx.userId, newState);
                 console.log(ctx.userId, `[${userState}] -> [${newState}]`);
                 await ctx.reply("Дай мне заполненный шаблон, дружочек");
                 break;
         }
     } catch (err) {
-        userModel.setState(ctx.userId, newState);
+        await userModel.setState(ctx.userId, newState);
         console.log(ctx.userId, `[${userState}] -> [${newState}]`);
         await ctx.reply(err.message);
     }
@@ -538,27 +569,27 @@ async function reportMenuCallback(ctx, callbackQuery){
  * @param callbackQuery
  * @returns {Promise<void>}
  */
-async function mySelfMenuCallback(ctx, callbackQuery){
+async function mySelfMenuCallback(ctx, callbackQuery) {
     try {
         switch (callbackQuery) {
             case strings.commands.MYSELF_LIST:
                 await ctx.reply(await myself.list(ctx.userId, ctx.userName));
                 break;
-        case strings.commands.MYSELF_NEW:
+            case strings.commands.MYSELF_NEW:
                 await userModel.setState(ctx.userId,
-                                         userModel.FSM_STATE.TASK_ADD);
+                    userModel.FSM_STATE.TASK_ADD);
                 await ctx.reply("Что ты сделал, дружочек?");
                 break;
             case strings.commands.MYSELF_CHANGE_STATUS:
                 await userModel.setState(ctx.userId,
-                                         userModel.FSM_STATE.TASK_CHANGE_STATE);
+                    userModel.FSM_STATE.TASK_CHANGE_STATE);
                 await ctx.reply("Введте номер задачи для изменения статуса");
                 break;
             case strings.commands.MYSELF_GET_FILE:
                 await replyMyselfFile(ctx.userId, ctx);
                 break;
         }
-    }catch (err) {
+    } catch (err) {
         await ctx.reply(err.message);
     }
 }
@@ -569,17 +600,15 @@ async function mySelfMenuCallback(ctx, callbackQuery){
  * @param ctx
  * @returns {Promise<unknown>}
  */
-async function replyMyselfFile(userId, ctx){
+async function replyMyselfFile(userId, ctx) {
     return new Promise(async (resolve, reject) => {
         try {
             const myselfFile = await myself.getMyselfFile(userId);
             await ctx.replyWithDocument({source: myselfFile});
             resolve();
-        }
-        catch (err) {
+        } catch (err) {
             reject(new Error(err.message));
-        }
-        finally {
+        } finally {
             await myself.garbageCollector(userId); //сборка мусора
         }
     });
@@ -590,7 +619,7 @@ bot.launch();
 /**
  * Перехват необработанных ошибок
  */
-process.on("uncaughtException",(err) => {
+process.on("uncaughtException", (err) => {
     console.log("Все паламалась!!!");
     console.log(err.message);
 });
