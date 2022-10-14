@@ -480,6 +480,7 @@ bot.on('callback_query', async (ctx) =>{
 async function rightsMenuCallback(ctx, callbackQuery){
     const userState = await userModel.getState(ctx.userId);
     let newState = false;
+    let activity = false;
     try{
         switch (callbackQuery) {
             case strings.commands.RIGHTS_USER_CHOISE:
@@ -494,18 +495,41 @@ async function rightsMenuCallback(ctx, callbackQuery){
                 await ctx.reply("Выбор сброшен");
                 break;
             case strings.commands.RIGHTS_USER_SET_STATUS:
-                await rights.changeUserProperty(intention.rights[ctx.userId].userChoiseId, 'status');
-                await ctx.reply("Статус изменен");
+                activity  = await activitiesModel.find(ctx.userId);
+                if (! activity) {
+                    ctx.reply("ОШИБКА: Не выбран пользователь");
+                } else {
+                    newState = userModel.FSM_STATE.DEFAULT;
+                    userModel.setState(ctx.userId, newState);
+                    console.log(ctx.userId, `[${userState}] -> [${newState}]`);
+                    await rights.changeUserProperty(activity.objectID,
+                                                    'status');
+                    await ctx.reply("Статус изменен");
+                }
                 break;
             case strings.commands.RIGHTS_USER_SET_OPENER:
-                await rights.changeUserProperty(intention.rights[ctx.userId].userChoiseId, 'opener');
-                await ctx.reply("Права на замок изменены");
+                activity  = await activitiesModel.find(ctx.userId);
+                if (! activity) {
+                    ctx.reply("ОШИБКА: Не выбран пользователь");
+                } else {
+                    newState = userModel.FSM_STATE.DEFAULT;
+                    userModel.setState(ctx.userId, newState);
+                    console.log(ctx.userId, `[${userState}] -> [${newState}]`);
+                    await rights.changeUserProperty(activity.objectID,
+                                                    'opener');
+                    await ctx.reply("Права на замок изменены");
+                }
                 break;
             case strings.commands.RIGHTS_USER_SET_NOTE:
-                newState = userModel.FSM_STATE.USER_MANAGEMENT_SET_NOTE;
-                userModel.setState(ctx.userId, newState);
-                console.log(ctx.userId, `[${userState}] -> [${newState}]`);
-                await ctx.reply("Введи новую заметку о пользователе, дружочек");
+                activity = await activitiesModel.find(ctx.userId);
+                if (! activity) {
+                    ctx.reply("ОШИБКА: Не выбран пользователь");
+                } else {
+                    newState = userModel.FSM_STATE.USER_MANAGEMENT_SET_NOTE;
+                    userModel.setState(ctx.userId, newState);
+                    console.log(ctx.userId, `[${userState}] -> [${newState}]`);
+                    await ctx.reply("Введи новую заметку о пользователе, дружочек");
+                }
                 break;
         }
     }catch (err) {
