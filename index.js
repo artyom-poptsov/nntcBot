@@ -17,10 +17,6 @@ const logs = require('./models/logs');
 const rights = require('./helpers/cowSuperPowers');
 const logsHelper = require('./helpers/logs');
 
-// const easterEggs = require('./helpers/easterEggs');
-// const kursGen = require('./helpers/wizard-kurs-report-generator');
-
-
 const bot = new Telegraf(cfg.TG_TOKEN);
 bd.connect();
 
@@ -47,7 +43,6 @@ bd.connect();
  */
 const intention = {
     addTemplateToGenerateReport: {},
-    taskChangeStatus: {},
     rights: {}
 };
 
@@ -255,12 +250,6 @@ async function reportMenu(ctx){
                 [Markup.callbackButton(strings.keyboardConstants.REPORTS_GENERATE, strings.commands.REPORTS_GENERATE)],
             ]).extra());
 }
-
-/*const intention = {
-    addCase: {},
-    addTemplateToGenerateReport: {}
-    rights: {}
-};*/
 
 /**
  * Выводит меню генерации пользователей.
