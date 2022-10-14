@@ -8,10 +8,34 @@ const usersSchema = mongoose.Schema({
     firstname: {type: String, default: "null"},
     lastname: {type: String, default: "null"},
     note: {type: String, default: ""},
-    opener: {type: Boolean, default: false}
+    opener: {type: Boolean, default: false},
+    // Current user state.
+    state: {type: String, default: "default"}
 });
 
 const Users = mongoose.model('user', usersSchema);
+
+/**
+ * Get the user state machine state.
+ * @param userId User ID for the state fetch.
+ * @return The current user state machine state.
+ */
+module.exports.getState = async (userId) => {
+    const user = await Users.findOne({userId: userId});
+    return user.state;
+};
+
+/**
+ * Set the user state machine state.
+ * @param userId User ID.
+ * @param newState User state to set.
+ */
+module.exports.setState = async (userId, newState) => {
+    const user = await Users.findOne({userId: userId});
+    await Users.updateOne({_id: user._id},
+                          {$set: {state: newState}},
+                          {});
+};
 
 /**
  * Получает данные из базы
@@ -61,7 +85,7 @@ module.exports.newUser = async (params) => {
     try {
         await user.save();
     } catch (err) {
-        throw new Error('Ошибка при сохранении в базу данных');
+        throw new Error('Ошибка при сохранении в базу данных', err);
     }
 }
 

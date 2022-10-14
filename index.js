@@ -184,16 +184,6 @@ bot.use(async (ctx, next) => {
         }
     }
 
-    if (userId in intention.taskChangeStatus) {
-        console.log("debug 0");
-        if(intention.taskChangeStatus[userId] === true){
-            delete intention.taskChangeStatus[userId];
-        }
-        else{
-            intention.taskChangeStatus[userId] = true;
-        }
-    }
-
     if(userId in intention.addTemplateToGenerateReport){
         if(intention.addTemplateToGenerateReport[userId] === true){
             delete intention.addTemplateToGenerateReport[userId];
@@ -446,6 +436,7 @@ bot.on('document', async (ctx) => {
  * Проверка на очистку листа сомооценки
  */
 bot.on('text', async (ctx) => {
+    const userState = await userModel.getState(ctx.userId);
     try {
         if(intention.rights[ctx.userId].userChoise === false){
             intention.rights[ctx.userId].userChoiseId = ctx.message.text.trim();
@@ -468,9 +459,8 @@ bot.on('text', async (ctx) => {
                     }
                 }
             }
-            if (ctx.userId in intention.taskChangeStatus) {
-                console.log("debug 1", intention.taskChangeStatus[ctx.userId]);
-                delete intention.taskChangeStatus[ctx.userId];
+            if (userState === "task-change-state") {
+                userModel.setState(ctx.userId, "default");
                 await ctx.reply(await myself.changeState(ctx.userId, ctx.message.text.trim()));
             }
         }
@@ -569,7 +559,7 @@ async function mySelfMenuCallback(ctx, callbackQuery){
                 await ctx.reply("Что ты сделал, дружочек?");
                 break;
             case strings.commands.MYSELF_CHANGE_STATUS:
-                intention.taskChangeStatus[ctx.userId] = false;
+                await userModel.setState(ctx.userId, "task-change-state");
                 await ctx.reply("Введте номер задачи для изменения статуса");
                 break;
             case strings.commands.MYSELF_GET_FILE:
