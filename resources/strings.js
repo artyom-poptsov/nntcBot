@@ -28,7 +28,11 @@ const keyboardConstants = {
     RIGHTS_USER_SET_NOTE: "Оставить заметку",
     RIGHTS_USER_CLEAR: "Завершить редактирование",
     TASKS: "Задачи",
-    TASKS_BACK: "Назад"
+    TASKS_BACK: "Назад",
+    TASKS_NEW: "Добавить новую задачу",
+    TASKS_CHANGE_STATUS: "Изменить статус задачи",
+    TASKS_GET_FILE: "Выгрузить файлом",
+    CANCEL: "Отмена"
 }
 
 const commands = {
@@ -119,17 +123,31 @@ module.exports.mainKeyboard = {
     }
 }
 
+module.exports.emptyKeyboard = {
+    "reply_markup": {
+        "keyboard": []
+    }
+}
+
+module.exports.cancelKeyboard = {
+    "reply_markup": {
+        "keyboard": [[
+            keyboardConstants.CANCEL
+        ]]
+    }
+}
+
 module.exports.tasksKeyboard = {
     "reply_markup": {
         "keyboard": [
             [
-                keyboardConstants.MYSELF_NEW
+                keyboardConstants.TASKS_NEW
             ],
             [
-                keyboardConstants.MYSELF_CHANGE_STATUS,
+                keyboardConstants.TASKS_CHANGE_STATUS,
             ],
             [
-                keyboardConstants.MYSELF_GET_FILE,
+                keyboardConstants.TASKS_GET_FILE,
             ],
             [
                 keyboardConstants.TASKS_BACK

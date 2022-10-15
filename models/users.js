@@ -24,7 +24,7 @@ module.exports.FSM_STATE = {
     TASK_ADD: "task-add",
     TASK_CHANGE_STATE: "task-change-state",
     REPORT_START: "report-start",
-    REPORT_GENERATE: "report-generate"
+    REPORT_GENERATE: "report-generate",
 };
 
 /**

@@ -67,12 +67,12 @@ module.exports.get = (userId) => {
 
 module.exports.changeState = async (userId, taskId) => {
     let userAffairs = await Affair.findOne({userId: userId}).exec();
+    console.log(userAffairs);
     if(!userAffairs){
         throw new Error("Ошибка: Нет такой задачи: " + taskId);
     } else {
-        let affair = userAffairs.affairs[taskId];
+        let affair = userAffairs.affairs.find(el => el.affair === taskId);
         affair.isDone = ! affair.isDone;
-        console.log(userAffairs);
         await Affair.updateOne({_id: userAffairs._id},
                                {$set: {affairs: userAffairs.affairs}},
                                {});

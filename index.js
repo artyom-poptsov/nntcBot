@@ -14,7 +14,7 @@ const userModel = require('./models/users');
 const logs = require('./models/logs');
 const rights = require('./helpers/cowSuperPowers');
 const logsHelper = require('./helpers/logs');
-const {keyboardConstants} = require("./resources/strings");
+const {keyboardConstants, commands} = require("./resources/strings");
 const {FSM_STATE} = require("./models/users");
 
 const bot = new Telegraf(cfg.TG_TOKEN);
@@ -166,11 +166,14 @@ async function hello(ctx) {
  */
 async function mySelfMenu(ctx) {
     const tasks = await myself.list(ctx.userId, ctx.userName);
-    await ctx.reply('Задачи:',
-        Markup.inlineKeyboard(tasks.map(task => {
-            return [Markup.callbackButton(task, strings.commands.TASK_CHANGE_STATUS + "")]
-        })).extra()
-    )
+    if (tasks.length) {
+        await ctx.reply('Задачи:',
+            Markup.inlineKeyboard(tasks.map(task => {
+                return [Markup.callbackButton(task.viewText, strings.commands.TASK_CHANGE_STATUS + " " + task.affair)];
+            })).extra()
+        )
+    } else await ctx.reply("Список задач пуст");
+
     await ctx.reply('Выберите действие:', strings.tasksKeyboard);
 }
 
@@ -196,7 +199,7 @@ async function reportMenu(ctx) {
 
 /**
  * Выводит меню генерации пользователей.
- * Админ может выбрать пользоватлея для работы, в таком случае, начинает выводиться информация о пользователе
+ * Админ может выбрать пользователя для работы, в таком случае, начинает выводиться информация о пользователе
  * id пользователя, который в работе
  * @param ctx
  * @returns {Promise<void>}
@@ -393,25 +396,37 @@ bot.on('text', async (ctx) => {
                     await ctx.reply("Заметка повешена на пользователя");
                 }
                 break;
-
-            case userModel.FSM_STATE.TASK_ADD:
-                await ctx.reply(await myself.new(ctx.userId,
-                    ctx.userName,
-                    ctx.message.text.trim()));
-                break;
             case userModel.FSM_STATE.TASKS:
                 switch (messageText) {
                     case keyboardConstants.TASKS_BACK:
-                        await ctx.reply(ctx.userId, "Возвращаемся назад");
-                        await myself.changeState(ctx.userId, FSM_STATE.DEFAULT);
+                        await ctx.reply("Возвращаемся назад", strings.mainKeyboard.forAdmins);
+                        await userModel.setState(ctx.userId, FSM_STATE.DEFAULT);
+                        break;
+                    case keyboardConstants.TASKS_NEW:
+                        await ctx.reply("Введите название новой задачи", strings.cancelKeyboard);
+                        await userModel.setState(ctx.userId, FSM_STATE.TASK_ADD);
+                        break;
+                    case keyboardConstants.TASKS_GET_FILE:
+                        await ctx.reply("Ваш отчётик");
+                        await replyMyselfFile(ctx.userId, ctx);
                         break;
                 }
                 break;
-            case userModel.FSM_STATE.TASK_CHANGE_STATE:
-                await userModel.setState(ctx.userId, userModel.FSM_STATE.DEFAULT);
-                await ctx.reply(await myself.changeState(ctx.userId, ctx.message.text.trim()));
+            case userModel.FSM_STATE.TASK_ADD:
+                if (messageText === strings.keyboardConstants.CANCEL) {
+                    await ctx.reply("Отмена так отмена", strings.tasksKeyboard);
+                    await userModel.setState(ctx.userId, FSM_STATE.TASKS);
+                    break;
+                }
+                await ctx.reply(await myself.new(ctx.userId,
+                    ctx.userName,
+                    ctx.message.text.trim()), strings.tasksKeyboard);
+                await userModel.setState(ctx.userId, FSM_STATE.TASKS);
                 break;
-
+            case userModel.FSM_STATE.TASK_CHANGE_STATE:
+                await activitiesModel.add(ctx.userId, ctx.message.text.trim());
+                await userModel.setState(ctx.userId, userModel.FSM_STATE.DEFAULT);
+                break;
             case userModel.FSM_STATE.DEFAULT:
                 switch (messageText) {
                     case keyboardConstants.MYSELF:
@@ -571,29 +586,19 @@ async function reportMenuCallback(ctx, callbackQuery) {
  */
 async function mySelfMenuCallback(ctx, callbackQuery) {
     try {
-        switch (callbackQuery) {
-            case strings.commands.MYSELF_LIST:
-                await ctx.reply(await myself.list(ctx.userId, ctx.userName));
-                break;
-            case strings.commands.MYSELF_NEW:
-                await userModel.setState(ctx.userId,
-                    userModel.FSM_STATE.TASK_ADD);
-                await ctx.reply("Что ты сделал, дружочек?");
-                break;
-            case strings.commands.MYSELF_CHANGE_STATUS:
-                await userModel.setState(ctx.userId,
-                    userModel.FSM_STATE.TASK_CHANGE_STATE);
-                await ctx.reply("Введте номер задачи для изменения статуса");
-                break;
-            case strings.commands.MYSELF_GET_FILE:
-                await replyMyselfFile(ctx.userId, ctx);
-                break;
+        if (callbackQuery.startsWith(strings.commands.TASK_CHANGE_STATUS)) {
+            const task = callbackQuery.split(" ").slice(1).join(" ");
+            await myself.changeState(ctx.userId, task);
+            await ctx.reply(task + " зачтено");
+            await ctx.editMessageReplyMarkup(Markup.callbackButton());
         }
     } catch (err) {
         await ctx.reply(err.message);
     }
 }
+bot.action(new RegExp(`${strings.commands.TASK_CHANGE_STATUS}`), ctx => {
 
+})
 /**
  * Отдает в чат лист самооценки и прибирает мусор за генератором файла
  * @param userId
@@ -609,6 +614,7 @@ async function replyMyselfFile(userId, ctx) {
         } catch (err) {
             reject(new Error(err.message));
         } finally {
+            await userModel.setState(ctx.userId, FSM_STATE.TASKS);
             await myself.garbageCollector(userId); //сборка мусора
         }
     });

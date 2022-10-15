@@ -134,10 +134,11 @@ async function botDecorator(userId, affairs){
     try{
         const user = await modelUser.get(userId);
         let i = 0;
-        return affairs.map((affair) => {
+        return affairs.map(affair => {
             const affairDateString = user.showDate ? '"' + affair.date + '" —' : '';
             const isDoneMark = affair.isDone ? "✅" : "🔲";
-            return `${isDoneMark} ${i++} — ${affairDateString} ${affair.affair}`;
+            affair.viewText = `${isDoneMark} ${i++} — ${affairDateString} ${affair.affair}`;
+            return affair;
         });
     }catch (err) {
         throw err;
