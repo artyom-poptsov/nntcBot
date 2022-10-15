@@ -65,9 +65,15 @@ module.exports.get = (userId) => {
     });
 }
 
+module.exports.getTaskByName = async (userId, taskName) => {
+    const mySelf = await Affair.findOne({userId});
+    const tasks = mySelf.affairs;
+    const task = tasks.find(task => task.affair === taskName);
+    return task;
+}
+
 module.exports.changeState = async (userId, taskId) => {
     let userAffairs = await Affair.findOne({userId: userId}).exec();
-    console.log(userAffairs);
     if(!userAffairs){
         throw new Error("Ошибка: Нет такой задачи: " + taskId);
     } else {

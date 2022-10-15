@@ -16,7 +16,8 @@ const rights = require('./helpers/cowSuperPowers');
 const logsHelper = require('./helpers/logs');
 const {keyboardConstants, commands} = require("./resources/strings");
 const {FSM_STATE} = require("./models/users");
-
+const mySelfModel = require('./models/mySelf');
+const {getViewText} = require("./helpers/myself");
 const bot = new Telegraf(cfg.TG_TOKEN);
 bd.connect();
 
@@ -587,10 +588,15 @@ async function reportMenuCallback(ctx, callbackQuery) {
 async function mySelfMenuCallback(ctx, callbackQuery) {
     try {
         if (callbackQuery.startsWith(strings.commands.TASK_CHANGE_STATUS)) {
-            const task = callbackQuery.split(" ").slice(1).join(" ");
-            await myself.changeState(ctx.userId, task);
-            await ctx.reply(task + " зачтено");
-            await ctx.editMessageReplyMarkup(Markup.callbackButton());
+            const taskName = callbackQuery.split(" ").slice(1).join(" ");
+            await myself.changeState(ctx.userId, taskName);
+
+            //update keyboard
+            const tasks = await myself.list(ctx.userId, ctx.userName);
+            await ctx.editMessageReplyMarkup(Markup.inlineKeyboard(tasks.map(task => {
+                return [Markup.callbackButton(task.viewText, strings.commands.TASK_CHANGE_STATUS + " " + task.affair)];
+                }))
+            )
         }
     } catch (err) {
         await ctx.reply(err.message);

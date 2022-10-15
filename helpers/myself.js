@@ -140,9 +140,16 @@ async function botDecorator(userId, affairs){
             affair.viewText = `${isDoneMark} ${i++} — ${affairDateString} ${affair.affair}`;
             return affair;
         });
-    }catch (err) {
+    } catch (err) {
         throw err;
     }
+}
+
+
+module.exports.getViewText = (task) => {
+    // const taskDateString = user.showDate ? '"' + affair.date + '" —' : '';
+    const isDoneMark = task.isDone ? "✅" : "🔲";
+    return `${isDoneMark} ${task.affair}`;
 }
 
 /**
