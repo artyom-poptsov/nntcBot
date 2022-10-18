@@ -27,6 +27,12 @@ const keyboardConstants = {
     RIGHTS_USER_SET_STATUS: "Изменить статус пользователя",
     RIGHTS_USER_SET_NOTE: "Оставить заметку",
     RIGHTS_USER_CLEAR: "Завершить редактирование",
+    TASKS: "Задачи",
+    TASKS_BACK: "Назад",
+    TASKS_NEW: "Добавить новую задачу",
+    TASKS_CHANGE_STATUS: "Изменить статус задачи",
+    TASKS_GET_FILE: "Выгрузить файлом",
+    CANCEL: "Отмена"
 }
 
 const commands = {
@@ -44,6 +50,8 @@ const commands = {
     RIGHTS_USER_SET_STATUS: "userSetStatus",
     RIGHTS_USER_SET_NOTE: "userSetNote",
     RIGHTS_USER_CLEAR: "userManagementExit",
+    TASKS_BACK: "tasksBack",
+    TASK_CHANGE_STATUS: "taskChangeStatus"
 }
 
 module.exports.welcomeMessage = {
@@ -92,7 +100,7 @@ module.exports.mainKeyboard = {
                 ],
                 [
                     keyboardConstants.RIGHTS,
-                    keyboardConstants.MYSELF,
+                    keyboardConstants.TASKS,
                     keyboardConstants.REPORTS
                 ]
             ]
@@ -115,6 +123,38 @@ module.exports.mainKeyboard = {
     }
 }
 
+module.exports.emptyKeyboard = {
+    "reply_markup": {
+        "keyboard": []
+    }
+}
+
+module.exports.cancelKeyboard = {
+    "reply_markup": {
+        "keyboard": [[
+            keyboardConstants.CANCEL
+        ]]
+    }
+}
+
+module.exports.tasksKeyboard = {
+    "reply_markup": {
+        "keyboard": [
+            [
+                keyboardConstants.TASKS_NEW
+            ],
+            [
+                keyboardConstants.TASKS_CHANGE_STATUS,
+            ],
+            [
+                keyboardConstants.TASKS_GET_FILE,
+            ],
+            [
+                keyboardConstants.TASKS_BACK
+            ]
+        ]
+    }
+}
 
 module.exports.listsOfRights = {
     students: [keyboardConstants.BELLS, keyboardConstants.VC, '/start', '/help', '/admins', '/getId'],

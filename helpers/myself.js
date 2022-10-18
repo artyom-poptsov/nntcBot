@@ -14,15 +14,13 @@ module.exports.list = async (userId, userName) => {
         let toDoList = [];
         try {
             const queryMyself = await modelMyself.get(userId);
-            if (! queryMyself) {
-                resolve("Список задач пуст.");
+            if (!queryMyself) {
+                resolve(toDoList);
             } else {
-                console.log(queryMyself);
                 toDoList = await botDecorator(userId, queryMyself.affairs);
-                toDoList.unshift("Ваши задачи:");
-                resolve(toDoList.join('\n'));
+                resolve(toDoList);
             }
-        }catch (err) {
+        } catch (err) {
             console.log("affairs list error", err);
             reject(new Error('Не могу показать твой лист, дружочек =('));
         }
@@ -136,14 +134,22 @@ async function botDecorator(userId, affairs){
     try{
         const user = await modelUser.get(userId);
         let i = 0;
-        return affairs.map((affair) => {
+        return affairs.map(affair => {
             const affairDateString = user.showDate ? '"' + affair.date + '" —' : '';
             const isDoneMark = affair.isDone ? "✅" : "🔲";
-            return `${isDoneMark} ${i++} — ${affairDateString} ${affair.affair}`;
+            affair.viewText = `${isDoneMark} ${i++} — ${affairDateString} ${affair.affair}`;
+            return affair;
         });
-    }catch (err) {
+    } catch (err) {
         throw err;
     }
+}
+
+
+module.exports.getViewText = (task) => {
+    // const taskDateString = user.showDate ? '"' + affair.date + '" —' : '';
+    const isDoneMark = task.isDone ? "✅" : "🔲";
+    return `${isDoneMark} ${task.affair}`;
 }
 
 /**

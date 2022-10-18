@@ -23,9 +23,9 @@ module.exports.add = async (subjectID, objectID) => {
 module.exports.find = async (subjectID) => {
     return new Promise(resolve => {
         Activity.findOne({subjectID: subjectID},
-                         (err, data) => {
-                             resolve(data);
-                         });
+            (err, data) => {
+                resolve(data);
+            });
     });
 };
 

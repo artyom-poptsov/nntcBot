@@ -20,10 +20,11 @@ module.exports.FSM_STATE = {
     USER_MANAGEMENT_SELECT_USER: "user-management-select-user",
     USER_MANAGEMENT_SELECT_OPERATION: "user-management-select-operation",
     USER_MANAGEMENT_SET_NOTE: "user-management-set-note",
+    TASKS: "tasks",
     TASK_ADD: "task-add",
     TASK_CHANGE_STATE: "task-change-state",
     REPORT_START: "report-start",
-    REPORT_GENERATE: "report-generate"
+    REPORT_GENERATE: "report-generate",
 };
 
 /**
