@@ -144,9 +144,6 @@ module.exports.tasksKeyboard = {
                 keyboardConstants.TASKS_NEW
             ],
             [
-                keyboardConstants.TASKS_CHANGE_STATUS,
-            ],
-            [
                 keyboardConstants.TASKS_GET_FILE,
             ],
             [
