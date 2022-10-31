@@ -336,10 +336,10 @@ bot.hears(strings.keyboardConstants.REPORTS, async (ctx) => {
 });
 
 /**
- * Если пользователь загрузил файл- проверяю намерение сгенерировать отчет
+ * Handle document uploads.
  */
-bot.on('document', async (ctx) => {
-    const userState = await userModel.getState(ctx.userId);
+async function handleDocument(ctx) {
+        const userState = await userModel.getState(ctx.userId);
     let newState = userModel.FSM_STATE.DEFAULT;
     // await ctx.reply(ctx.message.document.file_id);
     try {
@@ -360,7 +360,12 @@ bot.on('document', async (ctx) => {
         console.log(ctx.userId, `[${userState}] -> [${newState}]`);
         await report.garbageCollector(ctx.userId);
     }
-});
+}
+
+/**
+ * Если пользователь загрузил файл- проверяю намерение сгенерировать отчет
+ */
+bot.on('document', handleDocument);
 
 /**
  * Выполняется если бот получил произвольный текст.
