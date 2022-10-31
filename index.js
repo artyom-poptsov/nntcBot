@@ -47,6 +47,96 @@ async function handleDocument(ctx) {
     }
 }
 
+async function handleText(ctx) {
+    const userState = await userModel.getState(ctx.userId);
+    console.log(userState);
+    const messageText = ctx.message.text;
+    try {
+        switch (userState) {
+        case userModel.FSM_STATE.USER_MANAGEMENT_SELECT_USER:
+            const newState = userModel.FSM_STATE.USER_MANAGEMENT_SELECT_OPERATION;
+            const objectID = ctx.message.text.trim();
+            await activitiesModel.add(ctx.userId, objectID);
+            await userModel.setState(ctx.userId, newState);
+            console.log(ctx.userId, `[${userState}] -> [${newState}]`);
+            await rightsMenu(ctx);
+            break;
+
+        case userModel.FSM_STATE.USER_MANAGEMENT_SET_NOTE:
+            const activity = await activitiesModel.find(ctx.userId);
+            if (!activity) {
+                const newState = userModel.FSM_STATE.DEFAULT;
+                await userModel.setState(ctx.userId, newState);
+                console.log(ctx.userId, `[${userState}] -> [${newState}]`);
+                await ctx.reply("ОШИБКА: Не выбран пользователь");
+            } else {
+                const newState = userModel.FSM_STATE.DEFAULT;
+                await userModel.setState(ctx.userId, newState);
+                console.log(ctx.userId, `[${userState}] -> [${newState}]`);
+                await rights.changeUserProperty(activity.objectID,
+                                                'note',
+                                                ctx.message.text.trim());
+                await ctx.reply("Заметка повешена на пользователя");
+            }
+            break;
+        case userModel.FSM_STATE.TASKS:
+            switch (messageText) {
+            case keyboardConstants.TASKS_BACK:
+                await ctx.reply("Возвращаемся назад", strings.mainKeyboard.forAdmins);
+                await userModel.setState(ctx.userId, FSM_STATE.DEFAULT);
+                break;
+            case keyboardConstants.TASKS_NEW:
+                await ctx.reply("Введите название новой задачи", strings.cancelKeyboard);
+                await userModel.setState(ctx.userId, FSM_STATE.TASK_ADD);
+                break;
+            case keyboardConstants.TASKS_GET_FILE:
+                await ctx.reply("Ваш отчётик");
+                await replyMyselfFile(ctx.userId, ctx);
+                break;
+            }
+            break;
+        case userModel.FSM_STATE.TASK_ADD:
+            if (messageText === strings.keyboardConstants.CANCEL) {
+                await ctx.reply("Отмена так отмена", strings.tasksKeyboard);
+                await userModel.setState(ctx.userId, FSM_STATE.TASKS);
+            } else {
+                await ctx.reply(await myself.new(ctx.userId,
+                                                 ctx.userName,
+                                                 ctx.message.text.trim()), strings.tasksKeyboard);
+                await userModel.setState(ctx.userId, FSM_STATE.TASKS);
+                await mySelfMenu(ctx);
+            }
+            break;
+        case userModel.FSM_STATE.TASK_CHANGE_STATE:
+            await activitiesModel.add(ctx.userId, ctx.message.text.trim());
+            await userModel.setState(ctx.userId, userModel.FSM_STATE.DEFAULT);
+            break;
+        case userModel.FSM_STATE.DEFAULT:
+            switch (messageText) {
+            case keyboardConstants.MYSELF:
+                await userModel.setState(ctx.userId, userModel.FSM_STATE.TASKS);
+                await mySelfMenu(ctx);
+            }
+            break;
+
+
+        default:
+
+            if (ctx.message.text.startsWith(strings.commands.MYSELF_QUICK_NEW)) {
+                await ctx.reply(await myself.new(ctx.userId, ctx.userName, ctx.message.text.slice(2).trim()));
+            } else {
+                if (ctx.message.text === strings.textConstants.CONFIRM_DELETE) {
+                    await ctx.reply(await myself.clear(ctx.userId));
+                } else {
+                    await hello(ctx);
+                }
+            }
+        }
+    } catch (err) {
+        await ctx.reply(err.message);
+    }
+}
+
 bd.connect();
 
 /**
@@ -366,95 +456,7 @@ bot.on('document', handleDocument);
  * Проверка не было ли быстрой команды на ввод дела
  * Проверка на очистку листа сомооценки
  */
-bot.on('text', async (ctx) => {
-    const userState = await userModel.getState(ctx.userId);
-    console.log(userState);
-    const messageText = ctx.message.text;
-    try {
-        switch (userState) {
-            case userModel.FSM_STATE.USER_MANAGEMENT_SELECT_USER:
-                const newState = userModel.FSM_STATE.USER_MANAGEMENT_SELECT_OPERATION;
-                const objectID = ctx.message.text.trim();
-                await activitiesModel.add(ctx.userId, objectID);
-                await userModel.setState(ctx.userId, newState);
-                console.log(ctx.userId, `[${userState}] -> [${newState}]`);
-                await rightsMenu(ctx);
-                break;
-
-            case userModel.FSM_STATE.USER_MANAGEMENT_SET_NOTE:
-                const activity = await activitiesModel.find(ctx.userId);
-                if (!activity) {
-                    const newState = userModel.FSM_STATE.DEFAULT;
-                    await userModel.setState(ctx.userId, newState);
-                    console.log(ctx.userId, `[${userState}] -> [${newState}]`);
-                    await ctx.reply("ОШИБКА: Не выбран пользователь");
-                } else {
-                    const newState = userModel.FSM_STATE.DEFAULT;
-                    await userModel.setState(ctx.userId, newState);
-                    console.log(ctx.userId, `[${userState}] -> [${newState}]`);
-                    await rights.changeUserProperty(activity.objectID,
-                        'note',
-                        ctx.message.text.trim());
-                    await ctx.reply("Заметка повешена на пользователя");
-                }
-                break;
-            case userModel.FSM_STATE.TASKS:
-                switch (messageText) {
-                    case keyboardConstants.TASKS_BACK:
-                        await ctx.reply("Возвращаемся назад", strings.mainKeyboard.forAdmins);
-                        await userModel.setState(ctx.userId, FSM_STATE.DEFAULT);
-                        break;
-                    case keyboardConstants.TASKS_NEW:
-                        await ctx.reply("Введите название новой задачи", strings.cancelKeyboard);
-                        await userModel.setState(ctx.userId, FSM_STATE.TASK_ADD);
-                        break;
-                    case keyboardConstants.TASKS_GET_FILE:
-                        await ctx.reply("Ваш отчётик");
-                        await replyMyselfFile(ctx.userId, ctx);
-                        break;
-                }
-                break;
-            case userModel.FSM_STATE.TASK_ADD:
-                if (messageText === strings.keyboardConstants.CANCEL) {
-                    await ctx.reply("Отмена так отмена", strings.tasksKeyboard);
-                    await userModel.setState(ctx.userId, FSM_STATE.TASKS);
-                } else {
-                    await ctx.reply(await myself.new(ctx.userId,
-                                                     ctx.userName,
-                                                     ctx.message.text.trim()), strings.tasksKeyboard);
-                    await userModel.setState(ctx.userId, FSM_STATE.TASKS);
-                    await mySelfMenu(ctx);
-                }
-                break;
-            case userModel.FSM_STATE.TASK_CHANGE_STATE:
-                await activitiesModel.add(ctx.userId, ctx.message.text.trim());
-                await userModel.setState(ctx.userId, userModel.FSM_STATE.DEFAULT);
-                break;
-            case userModel.FSM_STATE.DEFAULT:
-                switch (messageText) {
-                    case keyboardConstants.MYSELF:
-                        await userModel.setState(ctx.userId, userModel.FSM_STATE.TASKS);
-                        await mySelfMenu(ctx);
-                }
-                break;
-
-
-            default:
-
-                if (ctx.message.text.startsWith(strings.commands.MYSELF_QUICK_NEW)) {
-                    await ctx.reply(await myself.new(ctx.userId, ctx.userName, ctx.message.text.slice(2).trim()));
-                } else {
-                    if (ctx.message.text === strings.textConstants.CONFIRM_DELETE) {
-                        await ctx.reply(await myself.clear(ctx.userId));
-                    } else {
-                        await hello(ctx);
-                    }
-                }
-        }
-    } catch (err) {
-        await ctx.reply(err.message);
-    }
-});
+bot.on('text', handleText);
 
 //обработка команд с inline клавиатуры
 
