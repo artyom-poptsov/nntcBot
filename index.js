@@ -20,6 +20,33 @@ const mySelfModel = require('./models/mySelf');
 const {getViewText} = require("./helpers/myself");
 const bot = new Telegraf(cfg.TG_TOKEN);
 
+/**
+ * Handle document uploads.
+ */
+async function handleDocument(ctx) {
+    const userState = await userModel.getState(ctx.userId);
+    let newState = userModel.FSM_STATE.DEFAULT;
+    // await ctx.reply(ctx.message.document.file_id);
+    try {
+        if (userState === userModel.FSM_STATE.REPORT_GENERATE) {
+            const fileId = ctx.message.document.file_id;
+            //не хотел подключать API телеграмма к хэлперам, по этому подготавливаю
+            //файл к загрузке в роутере
+            const telegramFileResponse = await ctx.telegram.getFile(fileId);
+            const pathToArchiveWithReports = await report.generate(ctx.userId, telegramFileResponse);
+            await userModel.setState(ctx.userId, newState);
+            console.log(ctx.userId, `[${userState}] -> [${newState}]`);
+            await ctx.replyWithDocument({source: pathToArchiveWithReports});
+        }
+    } catch (err) {
+        await ctx.reply(err.message);
+    } finally {
+        await userModel.setState(ctx.userId, newState);
+        console.log(ctx.userId, `[${userState}] -> [${newState}]`);
+        await report.garbageCollector(ctx.userId);
+    }
+}
+
 bd.connect();
 
 /**
@@ -327,33 +354,6 @@ bot.hears(strings.keyboardConstants.RIGHTS, async (ctx) => {
 bot.hears(strings.keyboardConstants.REPORTS, async (ctx) => {
     await reportMenu(ctx);
 });
-
-/**
- * Handle document uploads.
- */
-async function handleDocument(ctx) {
-    const userState = await userModel.getState(ctx.userId);
-    let newState = userModel.FSM_STATE.DEFAULT;
-    // await ctx.reply(ctx.message.document.file_id);
-    try {
-        if (userState === userModel.FSM_STATE.REPORT_GENERATE) {
-            const fileId = ctx.message.document.file_id;
-            //не хотел подключать API телеграмма к хэлперам, по этому подготавливаю
-            //файл к загрузке в роутере
-            const telegramFileResponse = await ctx.telegram.getFile(fileId);
-            const pathToArchiveWithReports = await report.generate(ctx.userId, telegramFileResponse);
-            await userModel.setState(ctx.userId, newState);
-            console.log(ctx.userId, `[${userState}] -> [${newState}]`);
-            await ctx.replyWithDocument({source: pathToArchiveWithReports});
-        }
-    } catch (err) {
-        await ctx.reply(err.message);
-    } finally {
-        await userModel.setState(ctx.userId, newState);
-        console.log(ctx.userId, `[${userState}] -> [${newState}]`);
-        await report.garbageCollector(ctx.userId);
-    }
-}
 
 /**
  * Если пользователь загрузил файл- проверяю намерение сгенерировать отчет
