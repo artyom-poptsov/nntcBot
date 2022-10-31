@@ -31,6 +31,7 @@ const keyboardConstants = {
     TASKS_BACK: "Назад",
     TASKS_NEW: "Добавить новую задачу",
     TASKS_CHANGE_STATUS: "Изменить статус задачи",
+    TASKS_DELETE: "Удалить задачу",
     TASKS_GET_FILE: "Выгрузить файлом",
     CANCEL: "Отмена"
 }
@@ -51,7 +52,8 @@ const commands = {
     RIGHTS_USER_SET_NOTE: "userSetNote",
     RIGHTS_USER_CLEAR: "userManagementExit",
     TASKS_BACK: "tasksBack",
-    TASK_CHANGE_STATUS: "taskChangeStatus"
+    TASK_CHANGE_STATUS: "taskChangeStatus",
+    TASK_DELETE: "taskDelete"
 }
 
 module.exports.welcomeMessage = {
@@ -142,6 +144,9 @@ module.exports.tasksKeyboard = {
         "keyboard": [
             [
                 keyboardConstants.TASKS_NEW
+            ],
+            [
+                keyboardConstants.TASKS_DELETE
             ],
             [
                 keyboardConstants.TASKS_GET_FILE,
