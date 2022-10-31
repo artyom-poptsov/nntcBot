@@ -151,6 +151,43 @@ async function setUserData(ctx, next) {
     await next();
 }
 
+async function createUser(ctx, cfg) {
+    if (ctx.userId == cfg.TG_ADMIN_ID) {
+        console.log("Creating the system administrator with ID ",
+                    ctx.userId);
+        ctx.status = "admin";
+        ctx.opener = "true";
+    } else {
+        ctx.status = "student";
+        ctx.opener = "false";
+    }
+    await userModel.newUser(
+        {
+            userId: ctx.userId,
+            username: ctx.from.username,
+            firstname: ctx.from.first_name,
+            lastname: ctx.from.last_name,
+            status: ctx.status,
+            opener: ctx.opener
+        });
+}
+
+async function updateUser(ctx, user, cfg) {
+    ctx.status = user.status;
+    ctx.note = user.note;
+    ctx.opener = (user.status !== 'admin') ? user.opener : true;
+
+    if (user.username === "null") {
+        await userModel.setUserInfo(
+            {
+                userId: ctx.userId,
+                username: ctx.from.username,
+                firstname: ctx.from.first_name,
+                lastname: ctx.from.last_name
+            });
+    }
+}
+
 bd.connect();
 
 bot.use(setUserData);
@@ -163,38 +200,9 @@ bot.use(setUserData);
 bot.use(async (ctx, next) => {
     const user = await userModel.get(ctx.userId);
     if (!user) {
-        if (ctx.userId == cfg.TG_ADMIN_ID) {
-            console.log("Creating the system administrator with ID ",
-                ctx.userId);
-            ctx.status = "admin";
-            ctx.opener = "true";
-        } else {
-            ctx.status = "student";
-            ctx.opener = "false";
-        }
-        await userModel.newUser(
-            {
-                userId: ctx.userId,
-                username: ctx.from.username,
-                firstname: ctx.from.first_name,
-                lastname: ctx.from.last_name,
-                status: ctx.status,
-                opener: ctx.opener
-            });
+        await createUser(ctx, cfg);
     } else {
-        ctx.status = user.status;
-        ctx.note = user.note;
-        ctx.opener = (user.status !== 'admin') ? user.opener : true;
-
-        if (user.username === "null") {
-            await userModel.setUserInfo(
-                {
-                    userId: ctx.userId,
-                    username: ctx.from.username,
-                    firstname: ctx.from.first_name,
-                    lastname: ctx.from.last_name
-                });
-        }
+        await updateUser(ctx, user, cfg);
     }
     await next();
 });
