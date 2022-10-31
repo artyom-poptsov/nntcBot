@@ -420,12 +420,12 @@ bot.on('text', async (ctx) => {
                 if (messageText === strings.keyboardConstants.CANCEL) {
                     await ctx.reply("Отмена так отмена", strings.tasksKeyboard);
                     await userModel.setState(ctx.userId, FSM_STATE.TASKS);
-                    break;
+                } else {
+                    await ctx.reply(await myself.new(ctx.userId,
+                                                     ctx.userName,
+                                                     ctx.message.text.trim()), strings.tasksKeyboard);
+                    await userModel.setState(ctx.userId, FSM_STATE.TASKS);
                 }
-                await ctx.reply(await myself.new(ctx.userId,
-                    ctx.userName,
-                    ctx.message.text.trim()), strings.tasksKeyboard);
-                await userModel.setState(ctx.userId, FSM_STATE.TASKS);
                 break;
             case userModel.FSM_STATE.TASK_CHANGE_STATE:
                 await activitiesModel.add(ctx.userId, ctx.message.text.trim());
