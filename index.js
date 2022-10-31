@@ -142,16 +142,18 @@ async function handleError(err) {
     console.log(err.message);
 }
 
-bd.connect();
-
 /**
- * установка значений id, имени пользователя
+ * Установка значений ШВ, имени пользователя.
  */
-bot.use(async (ctx, next) => {
+async function setUserData(ctx, next) {
     ctx.userId = ctx.from.id.toString();
     ctx.userName = ctx.from.first_name;
     await next();
-});
+}
+
+bd.connect();
+
+bot.use(setUserData);
 
 /**
  * Каждый раз проверка, что пользователь есть в базе данных
