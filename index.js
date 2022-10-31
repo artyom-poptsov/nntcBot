@@ -168,11 +168,14 @@ async function hello(ctx) {
 async function mySelfMenu(ctx) {
     const tasks = await myself.list(ctx.userId, ctx.userName);
     if (tasks.length) {
-        await ctx.reply('Задачи:',
+        await ctx.reply(
+            'Задачи:',
             Markup.inlineKeyboard(tasks.map(task => {
-                return [Markup.callbackButton(task.viewText, strings.commands.TASK_CHANGE_STATUS + " " + task.affair)];
+                return [
+                    Markup.callbackButton(task.viewText, strings.commands.TASK_CHANGE_STATUS + " " + task.affair)
+                ];
             })).extra()
-        )
+        );
     } else await ctx.reply("Список задач пуст");
 
     await ctx.reply('Выберите действие:', strings.tasksKeyboard);
@@ -593,10 +596,11 @@ async function mySelfMenuCallback(ctx, callbackQuery) {
 
             //update keyboard
             const tasks = await myself.list(ctx.userId, ctx.userName);
-            await ctx.editMessageReplyMarkup(Markup.inlineKeyboard(tasks.map(task => {
-                return [Markup.callbackButton(task.viewText, strings.commands.TASK_CHANGE_STATUS + " " + task.affair)];
+            await ctx.editMessageReplyMarkup(
+                Markup.inlineKeyboard(tasks.map(task => {
+                    return [Markup.callbackButton(task.viewText, strings.commands.TASK_CHANGE_STATUS + " " + task.affair)];
                 }))
-            )
+            );
         }
     } catch (err) {
         await ctx.reply(err.message);
