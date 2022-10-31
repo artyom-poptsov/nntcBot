@@ -137,6 +137,11 @@ async function handleText(ctx) {
     }
 }
 
+async function handleError(err) {
+    console.log("Все паламалась!!!");
+    console.log(err.message);
+}
+
 bd.connect();
 
 /**
@@ -636,9 +641,6 @@ bot.launch();
 /**
  * Перехват необработанных ошибок
  */
-process.on("uncaughtException", (err) => {
-    console.log("Все паламалась!!!");
-    console.log(err.message);
-});
+process.on("uncaughtException", handleError);
 
 /// index.js ends here.
