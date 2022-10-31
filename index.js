@@ -425,6 +425,7 @@ bot.on('text', async (ctx) => {
                                                      ctx.userName,
                                                      ctx.message.text.trim()), strings.tasksKeyboard);
                     await userModel.setState(ctx.userId, FSM_STATE.TASKS);
+                    await mySelfMenu(ctx);
                 }
                 break;
             case userModel.FSM_STATE.TASK_CHANGE_STATE:
