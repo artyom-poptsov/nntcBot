@@ -19,9 +19,9 @@ const {FSM_STATE} = require("./models/users");
 const mySelfModel = require('./models/mySelf');
 const {getViewText} = require("./helpers/myself");
 const bot = new Telegraf(cfg.TG_TOKEN);
+
 bd.connect();
 
-// ######## Middleware ###########
 /**
  * установка значений id, имени пользователя
  */
@@ -314,13 +314,6 @@ bot.command('showDate', async (ctx) => {
     }
 });
 
-// /**
-//  * Команда на вывод меню самооценки
-//  */
-// bot.hears(strings.keyboardConstants.MYSELF, async (ctx) => {
-//     await mySelfMenu(ctx);
-// });
-
 /**
  * Команда на вывод меню управления правами пользователей
  */
@@ -339,7 +332,7 @@ bot.hears(strings.keyboardConstants.REPORTS, async (ctx) => {
  * Handle document uploads.
  */
 async function handleDocument(ctx) {
-        const userState = await userModel.getState(ctx.userId);
+    const userState = await userModel.getState(ctx.userId);
     let newState = userModel.FSM_STATE.DEFAULT;
     // await ctx.reply(ctx.message.document.file_id);
     try {
@@ -645,3 +638,5 @@ process.on("uncaughtException", (err) => {
     console.log("Все паламалась!!!");
     console.log(err.message);
 });
+
+/// index.js ends here.
